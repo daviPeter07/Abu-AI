@@ -44,8 +44,8 @@ export class DiscordClientService
     await this.client.login(this.botToken);
   }
 
-  onApplicationShutdown(): void {
-    this.client.destroy();
+  async onApplicationShutdown(): Promise<void> {
+    await this.client.destroy();
 
     this.logger.log('Conexão com o Discord encerrada');
   }
