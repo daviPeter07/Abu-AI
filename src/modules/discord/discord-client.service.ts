@@ -5,16 +5,12 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  Client,
-  Events,
-  GatewayIntentBits,
-  Message,
-} from 'discord.js';
+import { Client, Events, GatewayIntentBits, Message } from 'discord.js';
 
 @Injectable()
 export class DiscordClientService
-  implements OnApplicationBootstrap, OnApplicationShutdown {
+  implements OnApplicationBootstrap, OnApplicationShutdown
+{
   private readonly logger = new Logger(DiscordClientService.name);
 
   private readonly client = new Client({
@@ -52,9 +48,7 @@ export class DiscordClientService
 
   private registerEvents(): void {
     this.client.once(Events.ClientReady, (readyClient) => {
-      this.logger.log(
-        `Bot conectado ao Discord como ${readyClient.user.tag}`,
-      );
+      this.logger.log(`Bot conectado ao Discord como ${readyClient.user.tag}`);
     });
 
     this.client.on(Events.MessageCreate, (message) => {
@@ -82,9 +76,7 @@ export class DiscordClientService
         return;
       }
 
-      this.logger.log(
-        `Mensagem recebida de ${message.author.username}`,
-      );
+      this.logger.log(`Mensagem recebida de ${message.author.username}`);
 
       await message.channel.sendTyping();
 
@@ -95,8 +87,7 @@ export class DiscordClientService
         },
       });
     } catch (error) {
-      const stack =
-        error instanceof Error ? error.stack : String(error);
+      const stack = error instanceof Error ? error.stack : String(error);
 
       this.logger.error(
         `Não foi possível responder à mensagem ${message.id}`,

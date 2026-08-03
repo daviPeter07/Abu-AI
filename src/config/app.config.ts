@@ -15,7 +15,5 @@ export const envValidationSchema = Joi.object({
 
   DISCORD_BOT_TOKEN: Joi.string().trim().required(),
 
-  DISCORD_AI_CHANNEL_ID: Joi.string()
-    .pattern(/^\d+$/)
-    .required(),
+  DISCORD_AI_CHANNEL_ID: Joi.string().pattern(/^\d+$/).required(),
 });

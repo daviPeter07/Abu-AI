@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import {
-  appConfig,
-  envValidationSchema,
-} from './config/app.config';
+import { appConfig, envValidationSchema } from './config/app.config';
 import { DiscordModule } from './modules/discord/discord.module';
 
 @Module({
@@ -21,4 +18,4 @@ import { DiscordModule } from './modules/discord/discord.module';
     DiscordModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

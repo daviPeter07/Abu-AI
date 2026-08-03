@@ -13,10 +13,7 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(port);
 
-  Logger.log(
-    `Aplicação executando na porta ${port}`,
-    'Bootstrap',
-  );
+  Logger.log(`Aplicação executando na porta ${port}`, 'Bootstrap');
 }
 
 void bootstrap();
