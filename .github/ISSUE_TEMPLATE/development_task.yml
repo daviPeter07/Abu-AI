@@ -1,0 +1,87 @@
+name: Development task
+description: Create a planned development task for Abu AI
+title: "[Task]: "
+labels:
+  - task
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Explain why this task is necessary.
+      placeholder: Abu AI needs an isolated AI module before integrating OpenRouter.
+    validations:
+      required: true
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: Describe the exact result expected from this task.
+      placeholder: Create the AiModule and expose an AiService for other application modules.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List what should be implemented.
+      placeholder: |
+        - Create the AiModule
+        - Create the AiService
+        - Register and export the service
+        - Import the module into AppModule
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: List related changes that should not be included in this task.
+      placeholder: |
+        - OpenRouter integration
+        - Conversation persistence
+        - Contextual memory
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: Define the conditions required for this task to be considered complete.
+      placeholder: |
+        - [ ] The module is registered in the application
+        - [ ] The service can be injected into another provider
+        - [ ] The project builds successfully
+        - [ ] Existing behavior remains unchanged
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Add issues or tasks that must be completed before this one.
+      placeholder: Depends on #12
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Discord
+        - AI
+        - Conversations
+        - Knowledge
+        - Database
+        - Configuration
+        - Infrastructure
+        - Documentation
+        - Testing
+    validations:
+      required: true

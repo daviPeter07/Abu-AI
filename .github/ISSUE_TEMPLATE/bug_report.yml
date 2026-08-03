@@ -1,0 +1,113 @@
+name: Bug report
+description: Report unexpected behavior or a problem in Abu AI
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem in Abu AI.
+
+        Before submitting, confirm that the problem can be reproduced with the latest version of the project.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: Describe clearly what happened.
+      placeholder: The bot receives the message but does not respond in the configured Discord channel.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: Describe what you expected the application to do.
+      placeholder: The bot should display the typing indicator and respond to the message.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: List the steps required to reproduce the problem.
+      placeholder: |
+        1. Start the application with pnpm start:dev
+        2. Open the configured Discord channel
+        3. Send a text message
+        4. Observe that the bot does not respond
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Add logs or error messages related to the problem.
+      render: shell
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Select the part of the project where the problem occurs.
+      options:
+        - Discord integration
+        - Application configuration
+        - Application startup
+        - AI integration
+        - Conversation handling
+        - Database or memory
+        - Tests
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: Run node --version and enter the result.
+      placeholder: v24.17.0
+    validations:
+      required: true
+
+  - type: input
+    id: pnpm-version
+    attributes:
+      label: pnpm version
+      description: Run pnpm --version and enter the result.
+      placeholder: 10.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Verification
+      options:
+        - label: I tested the latest version of the project.
+          required: true
+        - label: I checked that the Discord bot token and channel ID are configured.
+          required: true
+        - label: I checked that the bot has permission to view and send messages in the channel.
+          required: true
+        - label: I searched for an existing issue describing the same problem.
+          required: true

@@ -1,0 +1,74 @@
+name: Feature request
+description: Suggest a new feature or improvement for Abu AI
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement for Abu AI.
+
+        Describe the problem and the expected behavior before proposing implementation details.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What problem or limitation does this feature address?
+      placeholder: The bot currently responds without considering recent messages from the conversation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the expected behavior of the feature.
+      placeholder: Retrieve the latest messages from the configured channel and include them in the AI request.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Select the main area related to the feature.
+      options:
+        - Discord integration
+        - AI integration
+        - Conversation handling
+        - Contextual memory
+        - Database
+        - Application configuration
+        - Developer experience
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe other approaches that were considered.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add examples, references, diagrams, or other useful information.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Verification
+      options:
+        - label: I searched for an existing issue that proposes the same feature.
+          required: true
+        - label: This feature is related to the current goals of Abu AI.
+          required: true
