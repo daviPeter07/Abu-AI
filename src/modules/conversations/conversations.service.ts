@@ -1,6 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiService } from '../ai/ai.service';
+import {
+  DISCORD_USER_REPOSITORY,
+  type DiscordUserRepository,
+} from '../discord-users/repositories/discord-user.repository';
 import type {
   GenerateConversationReplyInput,
   PersistConversationMessageInput,
@@ -22,6 +26,8 @@ export class ConversationsService {
     private readonly contextWindowService: ConversationContextWindowService,
     @Inject(CONVERSATION_MESSAGE_REPOSITORY)
     private readonly conversationMessageRepository: ConversationMessageRepository,
+    @Inject(DISCORD_USER_REPOSITORY)
+    private readonly discordUserRepository: DiscordUserRepository,
     configService: ConfigService,
   ) {
     this.contextCandidateMessagesLimit = configService.getOrThrow<number>(
@@ -72,6 +78,13 @@ export class ConversationsService {
     input: PersistConversationMessageInput,
   ): Promise<boolean | null> {
     try {
+      await this.discordUserRepository.upsert({
+        discordUserId: input.authorId,
+        username: input.authorUsername,
+        displayName: input.authorName,
+        seenAt: input.discordCreatedAt,
+      });
+
       return await this.conversationMessageRepository.createIfNotExists(input);
     } catch (error) {
       const stack = error instanceof Error ? error.stack : String(error);

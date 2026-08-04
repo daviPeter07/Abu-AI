@@ -13,6 +13,45 @@ enum ConversationMessageRole {
   ASSISTANT
 }
 
+enum MemoryScope {
+  USER
+  GROUP
+}
+
+enum MemoryType {
+  FACT
+  PREFERENCE
+  RELATIONSHIP
+  PROJECT
+  EVENT
+  OTHER
+}
+
+enum MemoryStatus {
+  ACTIVE
+  SUPERSEDED
+  REJECTED
+}
+
+model DiscordUser {
+  id String @id @default(cuid())
+
+  discordUserId String  @unique @map("discord_user_id")
+  username      String?
+  displayName   String  @map("display_name")
+
+  firstSeenAt DateTime @map("first_seen_at")
+  lastSeenAt  DateTime @map("last_seen_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messages        ConversationMessage[]
+  subjectMemories Memory[]              @relation("MemorySubject")
+
+  @@map("discord_users")
+}
+
 model ConversationMessage {
   id String @id @default(cuid())
 
@@ -21,8 +60,9 @@ model ConversationMessage {
   guildId   String @map("guild_id")
   channelId String @map("channel_id")
 
-  authorId   String @map("author_id")
-  authorName String @map("author_name")
+  authorId   String      @map("author_id")
+  authorName String      @map("author_name")
+  author     DiscordUser @relation(fields: [authorId], references: [discordUserId], onDelete: Restrict, onUpdate: Cascade)
 
   role    ConversationMessageRole
   content String                  @db.Text
@@ -32,6 +72,39 @@ model ConversationMessage {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  sourceMemories Memory[] @relation("MemorySource")
+
+  @@index([authorId])
   @@index([guildId, channelId, discordCreatedAt])
   @@map("conversation_messages")
+}
+
+model Memory {
+  id String @id @default(cuid())
+
+  scope MemoryScope
+  type  MemoryType
+
+  content           String @db.Text
+  normalizedContent String @map("normalized_content") @db.Text
+
+  subjectUserId String?      @map("subject_user_id")
+  subjectUser   DiscordUser? @relation("MemorySubject", fields: [subjectUserId], references: [id], onDelete: Restrict)
+
+  guildId String? @map("guild_id")
+
+  confidence Float
+  status     MemoryStatus @default(ACTIVE)
+
+  sourceMessageId String?              @map("source_message_id")
+  sourceMessage   ConversationMessage? @relation("MemorySource", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  lastConfirmedAt DateTime? @map("last_confirmed_at")
+
+  @@index([scope, subjectUserId, createdAt])
+  @@index([scope, guildId, createdAt])
+  @@index([sourceMessageId])
+  @@map("memories")
 }

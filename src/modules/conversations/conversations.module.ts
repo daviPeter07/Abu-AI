@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { AiModule } from '../ai/ai.module';
 import { DatabaseModule } from '../database/database.module';
+import { DiscordUsersModule } from '../discord-users/discord-users.module';
 import { ConversationContextWindowService } from './conversation-context-window.service';
 import { ConversationsService } from './conversations.service';
 import { CONVERSATION_MESSAGE_REPOSITORY } from './repositories/conversation-message.repository';
 import { PrismaConversationMessageRepository } from './repositories/prisma-conversation-message.repository';
 
 @Module({
-  imports: [AiModule, DatabaseModule],
+  imports: [AiModule, DatabaseModule, DiscordUsersModule],
   providers: [
     ConversationsService,
     ConversationContextWindowService,
