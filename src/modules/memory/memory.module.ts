@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AiModule } from '../ai/ai.module';
 import { DatabaseModule } from '../database/database.module';
+import { ObservabilityModule } from '../observability/observability.module';
 import { MemoryExtractorService } from './memory-extractor.service';
 import { MemoryService } from './memory.service';
 import { EmbeddingService } from './embedding.service';
@@ -11,7 +12,7 @@ import { MEMORY_REPOSITORY } from './repositories/memory.repository';
 import { PrismaMemoryRepository } from './repositories/prisma-memory.repository';
 
 @Module({
-  imports: [AiModule, DatabaseModule],
+  imports: [AiModule, DatabaseModule, ObservabilityModule],
   providers: [
     MemoryService,
     MemoryExtractorService,

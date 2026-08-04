@@ -56,6 +56,7 @@ export interface SearchRelevantMemoriesInput {
   query: string;
   discordUserId: string;
   guildId: string;
+  correlationId?: string;
 }
 
 export interface MemoryEvidenceInput {

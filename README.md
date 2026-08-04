@@ -24,6 +24,8 @@ Abu AI is a conversational Discord bot that uses OpenRouter to answer messages i
 - Lets users view, forget, clear, disable, and enable their own memories.
 - Prevents duplicate Discord events from creating duplicate records or replies.
 - Connects to PostgreSQL during NestJS startup and disconnects during shutdown.
+- Applies bounded OpenRouter timeouts and retries only temporary failures.
+- Exposes safe health and in-memory operational metrics endpoints.
 
 ## Tech Stack
 
@@ -56,7 +58,9 @@ src/
 │   ├── database/
 │   ├── discord/
 │   ├── discord-users/
-│   └── memory/
+│   ├── health/
+│   ├── memory/
+│   └── observability/
 ├── app.module.ts
 └── main.ts
 
@@ -74,6 +78,8 @@ prisma/
 | `discord` | Translates Discord events and messages to application contracts |
 | `discord-users` | Maintains Discord profiles identified by immutable user IDs |
 | `memory` | Validates and persists contextual user and group memories |
+| `observability` | Tracks safe provider, conversation, and timing metrics in memory |
+| `health` | Reports PostgreSQL, Discord, and AI provider status |
 
 `DatabaseModule` is not global. Modules that need database access must import it explicitly.
 
@@ -148,6 +154,17 @@ Memory management commands:
 
 Users can only view or change their own individual memories. Changes are soft deletions through `REJECTED` status and are recorded in the memory audit table.
 
+## Resilience and Observability
+
+OpenRouter chat and embedding requests use an explicit timeout and bounded exponential backoff. Retries are limited to connection failures, HTTP `408`, `429`, and `5xx` responses. Authentication, credit, model, and other permanent errors are not retried and produce safe operational messages without logging API keys, prompts, or message content.
+
+Every Discord message uses its immutable message ID as a correlation ID. Structured logs and in-memory metrics record provider calls, failures, context retrieval time, memory search time, response generation time, total processing time, sent characters, and retrieved memory count.
+
+Operational endpoints:
+
+- `GET /health` checks PostgreSQL with Prisma, Discord readiness, and the latest known provider states. Temporary provider failures are reported as degraded; it returns HTTP `503` for unavailable core dependencies or permanent provider failures.
+- `GET /metrics` returns process-local counters and latest timings. Metrics reset when the application restarts.
+
 ## Environment Variables
 
 Create a `.env` file based on `.env.example`:
@@ -161,6 +178,10 @@ DISCORD_AI_CHANNEL_ID=
 OPENROUTER_API_KEY=
 OPENROUTER_MODEL=
 EMBEDDING_MODEL=openai/text-embedding-3-small
+OPENROUTER_REQUEST_TIMEOUT_MS=30000
+OPENROUTER_RETRY_INITIAL_DELAY_MS=500
+OPENROUTER_RETRY_MAX_DELAY_MS=2000
+OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS=5000
 
 AI_CONTEXT_MAX_CHARACTERS=12000
 AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT=50
@@ -181,6 +202,10 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
 | `OPENROUTER_API_KEY` | OpenRouter API key |
 | `OPENROUTER_MODEL` | OpenRouter model identifier |
 | `EMBEDDING_MODEL` | OpenRouter embedding model identifier |
+| `OPENROUTER_REQUEST_TIMEOUT_MS` | Maximum duration of each OpenRouter request in milliseconds |
+| `OPENROUTER_RETRY_INITIAL_DELAY_MS` | Initial retry backoff delay in milliseconds |
+| `OPENROUTER_RETRY_MAX_DELAY_MS` | Maximum retry backoff delay in milliseconds |
+| `OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS` | Maximum total retry period in milliseconds |
 | `AI_CONTEXT_MAX_CHARACTERS` | Maximum character budget for recent context |
 | `AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT` | Maximum number of recent database messages considered before applying the character budget |
 | `AI_MEMORY_MAX_CHARACTERS` | Character budget for retrieved memories |
@@ -257,4 +282,4 @@ Copy the target channel ID to `DISCORD_AI_CHANNEL_ID`.
 
 ## Current Status
 
-The current version persists conversations, extracts contextual memories, retrieves relevant memories semantically, injects them safely into AI context, and gives users control over their individual memory.
+The current version persists conversations, manages contextual memory, applies bounded OpenRouter resilience, and exposes safe health and operational metrics.

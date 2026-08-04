@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client, Events, GatewayIntentBits, type Message } from 'discord.js';
+import { AiProviderError } from '../ai/errors/ai-provider.error';
 import { ConversationsService } from '../conversations/conversations.service';
 import { mapDiscordConversationMessage } from './discord-conversation-message.mapper';
 import { DiscordMemoryCommandsService } from './discord-memory-commands.service';
@@ -55,6 +56,10 @@ export class DiscordClientService
     this.logger.log('Conexão com o Discord encerrada');
   }
 
+  isReady(): boolean {
+    return this.client.isReady();
+  }
+
   private registerEvents(): void {
     this.client.once(Events.ClientReady, (readyClient) => {
       this.logger.log(`Bot conectado ao Discord como ${readyClient.user.tag}`);
@@ -89,9 +94,13 @@ export class DiscordClientService
         return;
       }
 
-      const username = message.member?.displayName ?? message.author.username;
-
-      this.logger.log(`Mensagem recebida de ${username}`);
+      this.logger.log(
+        JSON.stringify({
+          event: 'discord_message_received',
+          message: 'Mensagem recebida do Discord',
+          correlationId: message.id,
+        }),
+      );
 
       await message.channel.sendTyping();
 
@@ -116,11 +125,16 @@ export class DiscordClientService
       const stack = error instanceof Error ? error.stack : String(error);
 
       this.logger.error(
-        `Não foi possível responder à mensagem ${message.id}`,
+        JSON.stringify({
+          event: 'discord_message_failed',
+          message: 'Não foi possível responder à mensagem do Discord',
+          correlationId: message.id,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+        }),
         stack,
       );
 
-      await this.sendErrorResponse(message);
+      await this.sendErrorResponse(message, error);
     }
   }
 
@@ -136,11 +150,16 @@ export class DiscordClientService
     return `${normalizedContent.slice(0, availableLength)}...`;
   }
 
-  private async sendErrorResponse(message: Message): Promise<void> {
+  private async sendErrorResponse(
+    message: Message,
+    error?: unknown,
+  ): Promise<void> {
     try {
       await message.reply({
         content:
-          'Não consegui gerar uma resposta agora. Tente novamente em alguns instantes.',
+          error instanceof AiProviderError
+            ? error.userMessage
+            : 'Não consegui gerar uma resposta agora. Tente novamente em alguns instantes.',
         allowedMentions: {
           repliedUser: false,
         },

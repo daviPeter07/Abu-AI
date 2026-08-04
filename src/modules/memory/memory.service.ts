@@ -171,6 +171,7 @@ export class MemoryService {
             ...memory,
             embedding: await this.embeddingService.generate(
               memory.normalizedContent,
+              input.discordMessageId,
             ),
           },
           evidence,
@@ -183,6 +184,7 @@ export class MemoryService {
           ...memory,
           embedding: await this.embeddingService.generate(
             memory.normalizedContent,
+            input.discordMessageId,
           ),
         },
         evidence,

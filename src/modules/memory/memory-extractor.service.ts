@@ -37,6 +37,7 @@ export class MemoryExtractorService {
         },
       ],
       responseFormat: 'json',
+      correlationId: input.discordMessageId,
     });
 
     if (!response.trim()) {

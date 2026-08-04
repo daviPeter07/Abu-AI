@@ -36,4 +36,19 @@ export class PrismaService
 
     this.logger.log('Conexão com o PostgreSQL encerrada');
   }
+
+  async isHealthy(): Promise<boolean> {
+    try {
+      await this.conversationMessage.findFirst({
+        select: {
+          id: true,
+        },
+      });
+
+      return true;
+    } catch {
+      this.logger.warn('A verificação de saúde do PostgreSQL falhou');
+      return false;
+    }
+  }
 }

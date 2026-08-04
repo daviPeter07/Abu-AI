@@ -40,7 +40,10 @@ export class MemorySearchService {
       return [];
     }
 
-    const queryEmbedding = await this.embeddingService.generate(input.query);
+    const queryEmbedding = await this.embeddingService.generate(
+      input.query,
+      input.correlationId,
+    );
     const candidates = await this.memoryRepository.findActiveCandidates({
       discordUserId: input.discordUserId,
       guildId: input.guildId,
