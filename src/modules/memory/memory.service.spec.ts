@@ -5,6 +5,7 @@ import type {
 } from './contracts/memory.contract';
 import { MemoryScope, MemoryStatus, MemoryType } from './enums/memory.enums';
 import { MemoryService } from './memory.service';
+import { MemoryExtractorService } from './memory-extractor.service';
 import {
   MEMORY_REPOSITORY,
   type MemoryRepository,
@@ -25,6 +26,23 @@ describe('MemoryService', () => {
     ReturnType<MemoryRepository['findByGroup']>,
     Parameters<MemoryRepository['findByGroup']>
   >();
+  const findActiveCandidates = jest.fn<
+    ReturnType<MemoryRepository['findActiveCandidates']>,
+    Parameters<MemoryRepository['findActiveCandidates']>
+  >();
+  const createExtracted = jest.fn<
+    ReturnType<MemoryRepository['createExtracted']>,
+    Parameters<MemoryRepository['createExtracted']>
+  >();
+  const confirmExtracted = jest.fn<
+    ReturnType<MemoryRepository['confirmExtracted']>,
+    Parameters<MemoryRepository['confirmExtracted']>
+  >();
+  const supersedeExtracted = jest.fn<
+    ReturnType<MemoryRepository['supersedeExtracted']>,
+    Parameters<MemoryRepository['supersedeExtracted']>
+  >();
+  const extract = jest.fn();
 
   const now = new Date('2026-08-04T12:00:00.000Z');
   const memory: MemoryRecord = {
@@ -56,10 +74,20 @@ describe('MemoryService', () => {
     create.mockReset();
     findByUser.mockReset();
     findByGroup.mockReset();
+    findActiveCandidates.mockReset();
+    createExtracted.mockReset();
+    confirmExtracted.mockReset();
+    supersedeExtracted.mockReset();
+    extract.mockReset();
 
     create.mockResolvedValue(memory);
     findByUser.mockResolvedValue([memory]);
     findByGroup.mockResolvedValue([memory]);
+    findActiveCandidates.mockResolvedValue([]);
+    createExtracted.mockResolvedValue(true);
+    confirmExtracted.mockResolvedValue(true);
+    supersedeExtracted.mockResolvedValue(true);
+    extract.mockResolvedValue([]);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -70,6 +98,16 @@ describe('MemoryService', () => {
             create,
             findByUser,
             findByGroup,
+            findActiveCandidates,
+            createExtracted,
+            confirmExtracted,
+            supersedeExtracted,
+          },
+        },
+        {
+          provide: MemoryExtractorService,
+          useValue: {
+            extract,
           },
         },
       ],
@@ -188,6 +226,99 @@ describe('MemoryService', () => {
   it('should reject an empty lookup identifier', () => {
     expect(() => memoryService.findByUser(' ')).toThrow(
       'O ID do usuário do Discord é obrigatório',
+    );
+  });
+
+  it('should persist a new extracted memory with idempotent evidence', async () => {
+    extract.mockResolvedValue([
+      {
+        scope: MemoryScope.USER,
+        type: MemoryType.PREFERENCE,
+        subjectDiscordUserId: 'discord-user-id',
+        content: 'Davi gosta de TypeScript',
+        confidence: 0.9,
+      },
+    ]);
+
+    await memoryService.extractFromMessage({
+      discordMessageId: 'discord-message-id',
+      guildId: 'guild-id',
+      authorDiscordUserId: 'discord-user-id',
+      authorName: 'Davi',
+      content: 'Eu gosto de TypeScript',
+      discordCreatedAt: now,
+    });
+
+    expect(createExtracted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        normalizedContent: 'davi gosta de typescript',
+        sourceDiscordMessageId: 'discord-message-id',
+      }),
+      expect.any(Object),
+    );
+    const evidence = createExtracted.mock.calls[0]?.[1];
+
+    expect(evidence?.sourceDiscordMessageId).toBe('discord-message-id');
+    expect(evidence?.idempotencyKey).toHaveLength(64);
+  });
+
+  it('should confirm an equivalent active memory', async () => {
+    findActiveCandidates.mockResolvedValue([memory]);
+    extract.mockResolvedValue([
+      {
+        scope: MemoryScope.USER,
+        type: MemoryType.PREFERENCE,
+        subjectDiscordUserId: 'discord-user-id',
+        content: 'Davi gosta de TypeScript',
+        confidence: 0.5,
+      },
+    ]);
+
+    await memoryService.extractFromMessage({
+      discordMessageId: 'new-message-id',
+      guildId: 'guild-id',
+      authorDiscordUserId: 'discord-user-id',
+      authorName: 'Davi',
+      content: 'Ainda gosto de TypeScript',
+      discordCreatedAt: now,
+    });
+
+    expect(confirmExtracted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memoryId: 'memory-id',
+        confidence: 0.95,
+      }),
+    );
+  });
+
+  it('should supersede an active memory without deleting its history', async () => {
+    findActiveCandidates.mockResolvedValue([memory]);
+    extract.mockResolvedValue([
+      {
+        scope: MemoryScope.USER,
+        type: MemoryType.PREFERENCE,
+        subjectDiscordUserId: 'discord-user-id',
+        content: 'Davi prefere NestJS',
+        confidence: 0.95,
+        supersedesMemoryId: 'memory-id',
+      },
+    ]);
+
+    await memoryService.extractFromMessage({
+      discordMessageId: 'new-message-id',
+      guildId: 'guild-id',
+      authorDiscordUserId: 'discord-user-id',
+      authorName: 'Davi',
+      content: 'Agora prefiro NestJS',
+      discordCreatedAt: now,
+    });
+
+    const supersedeInput = supersedeExtracted.mock.calls[0]?.[0];
+
+    expect(supersedeInput?.supersededMemoryId).toBe('memory-id');
+    expect(supersedeInput?.memory.status).toBe(MemoryStatus.ACTIVE);
+    expect(supersedeInput?.memory.normalizedContent).toBe(
+      'davi prefere nestjs',
     );
   });
 });

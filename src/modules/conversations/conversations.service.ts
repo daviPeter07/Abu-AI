@@ -5,6 +5,7 @@ import {
   DISCORD_USER_REPOSITORY,
   type DiscordUserRepository,
 } from '../discord-users/repositories/discord-user.repository';
+import { MemoryService } from '../memory/memory.service';
 import type {
   GenerateConversationReplyInput,
   PersistConversationMessageInput,
@@ -28,6 +29,7 @@ export class ConversationsService {
     private readonly conversationMessageRepository: ConversationMessageRepository,
     @Inject(DISCORD_USER_REPOSITORY)
     private readonly discordUserRepository: DiscordUserRepository,
+    private readonly memoryService: MemoryService,
     configService: ConfigService,
   ) {
     this.contextCandidateMessagesLimit = configService.getOrThrow<number>(
@@ -64,6 +66,24 @@ export class ConversationsService {
     const sentMessage = await input.sendReply(response);
 
     await this.persistMessage(sentMessage);
+
+    try {
+      await this.memoryService.extractFromMessage({
+        discordMessageId: input.message.discordMessageId,
+        guildId: input.message.guildId,
+        authorDiscordUserId: input.message.authorId,
+        authorName: input.message.authorName,
+        content: input.message.content,
+        discordCreatedAt: input.message.discordCreatedAt,
+      });
+    } catch (error) {
+      const stack = error instanceof Error ? error.stack : String(error);
+
+      this.logger.error(
+        `Não foi possível extrair memórias da mensagem ${input.message.discordMessageId}`,
+        stack,
+      );
+    }
   }
 
   generateReply(input: GenerateConversationReplyInput): Promise<string> {

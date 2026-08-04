@@ -44,3 +44,26 @@ export interface MemoryRecord {
   updatedAt: Date;
   lastConfirmedAt: Date | null;
 }
+
+export interface FindActiveMemoryCandidatesInput {
+  discordUserId: string;
+  guildId: string;
+}
+
+export interface MemoryEvidenceInput {
+  idempotencyKey: string;
+  sourceDiscordMessageId: string;
+}
+
+export interface ConfirmExtractedMemoryInput {
+  memoryId: string;
+  confidence: number;
+  lastConfirmedAt: Date;
+  evidence: MemoryEvidenceInput;
+}
+
+export interface SupersedeExtractedMemoryInput {
+  supersededMemoryId: string;
+  memory: CreateMemoryRepositoryInput;
+  evidence: MemoryEvidenceInput;
+}

@@ -7,6 +7,7 @@ import {
   DISCORD_USER_REPOSITORY,
   type DiscordUserRepository,
 } from '../discord-users/repositories/discord-user.repository';
+import { MemoryService } from '../memory/memory.service';
 import type {
   ConversationMessage,
   GenerateConversationReplyInput,
@@ -49,6 +50,7 @@ describe('ConversationsService', () => {
   >();
 
   const getOrThrow = jest.fn().mockReturnValue(50);
+  const extractFromMessage = jest.fn();
   const sendReply = jest.fn<
     Promise<PersistConversationMessageInput>,
     [string]
@@ -93,6 +95,7 @@ describe('ConversationsService', () => {
     findRecentByChannel.mockReset();
     upsertDiscordUser.mockReset();
     getOrThrow.mockReset();
+    extractFromMessage.mockReset();
     sendReply.mockReset();
 
     generateResponse.mockResolvedValue('Seu nome é Davi.');
@@ -110,6 +113,7 @@ describe('ConversationsService', () => {
     });
     getOrThrow.mockReturnValue(50);
     sendReply.mockResolvedValue(assistantMessage);
+    extractFromMessage.mockResolvedValue(undefined);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -143,6 +147,12 @@ describe('ConversationsService', () => {
           provide: DISCORD_USER_REPOSITORY,
           useValue: {
             upsert: upsertDiscordUser,
+          },
+        },
+        {
+          provide: MemoryService,
+          useValue: {
+            extractFromMessage,
           },
         },
       ],
@@ -227,6 +237,14 @@ describe('ConversationsService', () => {
     expect(getOrThrow).toHaveBeenCalledWith(
       'app.ai.contextCandidateMessagesLimit',
     );
+    expect(extractFromMessage).toHaveBeenCalledWith({
+      discordMessageId: userMessage.discordMessageId,
+      guildId: userMessage.guildId,
+      authorDiscordUserId: userMessage.authorId,
+      authorName: userMessage.authorName,
+      content: userMessage.content,
+      discordCreatedAt: userMessage.discordCreatedAt,
+    });
   });
 
   it('should ignore a duplicated Discord event', async () => {

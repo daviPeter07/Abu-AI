@@ -1,10 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import type {
   CreateMemoryInput,
   CreateMemoryRepositoryInput,
   MemoryRecord,
 } from './contracts/memory.contract';
+import type { ExtractMemoriesFromMessageInput } from './contracts/memory-extraction.contract';
 import { MemoryScope, MemoryStatus, MemoryType } from './enums/memory.enums';
+import { MemoryExtractorService } from './memory-extractor.service';
 import {
   MEMORY_REPOSITORY,
   type MemoryRepository,
@@ -15,6 +18,7 @@ export class MemoryService {
   constructor(
     @Inject(MEMORY_REPOSITORY)
     private readonly memoryRepository: MemoryRepository,
+    private readonly memoryExtractorService: MemoryExtractorService,
   ) {}
 
   create(input: CreateMemoryInput): Promise<MemoryRecord> {
@@ -39,6 +43,86 @@ export class MemoryService {
     );
 
     return this.memoryRepository.findByGroup(normalizedGuildId);
+  }
+
+  async extractFromMessage(
+    input: ExtractMemoriesFromMessageInput,
+  ): Promise<void> {
+    const activeCandidates = await this.memoryRepository.findActiveCandidates({
+      discordUserId: input.authorDiscordUserId,
+      guildId: input.guildId,
+    });
+    const extractedMemories = await this.memoryExtractorService.extract({
+      ...input,
+      activeCandidates,
+    });
+    const processed = new Set<string>();
+
+    for (const extracted of extractedMemories) {
+      const memory = this.validateCreateInput({
+        scope: extracted.scope,
+        type: extracted.type,
+        content: extracted.content,
+        subjectDiscordUserId: extracted.subjectDiscordUserId,
+        guildId:
+          extracted.scope === MemoryScope.GROUP ? input.guildId : undefined,
+        confidence: extracted.confidence,
+        status: MemoryStatus.ACTIVE,
+        sourceDiscordMessageId: input.discordMessageId,
+        lastConfirmedAt: input.discordCreatedAt,
+      });
+      const contextKey = `${memory.scope}:${memory.subjectDiscordUserId ?? memory.guildId}:${memory.normalizedContent}`;
+
+      if (processed.has(contextKey)) {
+        continue;
+      }
+
+      processed.add(contextKey);
+
+      const evidence = {
+        idempotencyKey: createHash('sha256')
+          .update(`${input.discordMessageId}:${memory.normalizedContent}`)
+          .digest('hex'),
+        sourceDiscordMessageId: input.discordMessageId,
+      };
+      const equivalent = activeCandidates.find(
+        (candidate) =>
+          candidate.scope === memory.scope &&
+          candidate.normalizedContent === memory.normalizedContent &&
+          candidate.subjectDiscordUserId ===
+            (memory.subjectDiscordUserId ?? null) &&
+          candidate.guildId === (memory.guildId ?? null),
+      );
+
+      if (equivalent) {
+        await this.memoryRepository.confirmExtracted({
+          memoryId: equivalent.id,
+          confidence: 1 - (1 - equivalent.confidence) * (1 - memory.confidence),
+          lastConfirmedAt: input.discordCreatedAt,
+          evidence,
+        });
+        continue;
+      }
+
+      if (extracted.supersedesMemoryId) {
+        const superseded = activeCandidates.find(
+          (candidate) => candidate.id === extracted.supersedesMemoryId,
+        );
+
+        if (!superseded || superseded.scope !== memory.scope) {
+          throw new Error('A memória substituída não pertence ao mesmo escopo');
+        }
+
+        await this.memoryRepository.supersedeExtracted({
+          supersededMemoryId: superseded.id,
+          memory,
+          evidence,
+        });
+        continue;
+      }
+
+      await this.memoryRepository.createExtracted(memory, evidence);
+    }
   }
 
   private validateCreateInput(
