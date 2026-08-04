@@ -31,16 +31,27 @@ export class OpenRouterProvider implements AiProvider {
         chatRequest: {
           model: this.model,
           stream: false,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                `O nome do usuário é ${input.username}.`,
-                '',
-                input.message,
-              ].join('\n'),
-            },
-          ],
+          messages: input.messages.map((message) => {
+            switch (message.role) {
+              case 'system':
+                return {
+                  role: 'system' as const,
+                  content: message.content,
+                };
+
+              case 'assistant':
+                return {
+                  role: 'assistant' as const,
+                  content: message.content,
+                };
+
+              case 'user':
+                return {
+                  role: 'user' as const,
+                  content: message.content,
+                };
+            }
+          }),
         },
       });
 

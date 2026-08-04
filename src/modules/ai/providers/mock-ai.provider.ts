@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import {
+import type {
   AiProvider,
   GenerateAiResponseInput,
 } from '../contracts/ai-provider.contract';
 
 @Injectable()
 export class MockAiProvider implements AiProvider {
-  async generateResponse(input: GenerateAiResponseInput): Promise<string> {
-    return Promise.resolve(
-      `Olá, ${input.username}! Recebi sua mensagem: "${input.message}"`,
-    );
+  generateResponse(input: GenerateAiResponseInput): Promise<string> {
+    const userMessage = [...input.messages]
+      .reverse()
+      .find((message) => message.role === 'user');
+
+    return Promise.resolve(`Mock response: ${userMessage?.content ?? ''}`);
   }
 }
