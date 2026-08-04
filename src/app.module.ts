@@ -27,4 +27,4 @@ import { DatabaseModule } from './modules/database/database.module';
     ConversationsModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}
