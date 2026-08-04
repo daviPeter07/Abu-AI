@@ -13,6 +13,7 @@ export interface GenerateConversationReplyInput {
   content: string;
   username: string;
   recentMessages: ConversationMessage[];
+  relevantMemories?: string[];
 }
 
 export type PersistedConversationMessageRole = 'USER' | 'ASSISTANT';

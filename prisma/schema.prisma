@@ -33,6 +33,13 @@ enum MemoryStatus {
   REJECTED
 }
 
+enum MemoryAuditAction {
+  FORGET
+  CLEAR
+  DISABLE
+  ENABLE
+}
+
 model DiscordUser {
   id String @id @default(cuid())
 
@@ -43,11 +50,13 @@ model DiscordUser {
   firstSeenAt DateTime @map("first_seen_at")
   lastSeenAt  DateTime @map("last_seen_at")
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  memoryEnabled Boolean  @default(true) @map("memory_enabled")
 
   messages        ConversationMessage[]
   subjectMemories Memory[]              @relation("MemorySubject")
+  memoryAudits    MemoryAudit[]
 
   @@map("discord_users")
 }
@@ -86,8 +95,9 @@ model Memory {
   scope MemoryScope
   type  MemoryType
 
-  content           String @db.Text
-  normalizedContent String @map("normalized_content") @db.Text
+  content           String  @db.Text
+  normalizedContent String  @map("normalized_content") @db.Text
+  embedding         Float[] @default([])
 
   subjectUserId String?      @map("subject_user_id")
   subjectUser   DiscordUser? @relation("MemorySubject", fields: [subjectUserId], references: [id], onDelete: Restrict)
@@ -105,11 +115,30 @@ model Memory {
   lastConfirmedAt DateTime? @map("last_confirmed_at")
 
   evidence MemoryEvidence[]
+  audits   MemoryAudit[]
 
   @@index([scope, subjectUserId, createdAt])
   @@index([scope, guildId, createdAt])
   @@index([sourceMessageId])
   @@map("memories")
+}
+
+model MemoryAudit {
+  id String @id @default(cuid())
+
+  action MemoryAuditAction
+
+  actorDiscordUserId String      @map("actor_discord_user_id")
+  actor              DiscordUser @relation(fields: [actorDiscordUserId], references: [discordUserId], onDelete: Restrict)
+
+  memoryId String? @map("memory_id")
+  memory   Memory? @relation(fields: [memoryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([actorDiscordUserId, createdAt])
+  @@index([memoryId])
+  @@map("memory_audits")
 }
 
 model MemoryEvidence {

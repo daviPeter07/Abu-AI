@@ -16,6 +16,7 @@ interface SelectedMemory {
   type: MemoryRecord['type'];
   content: string;
   normalizedContent: string;
+  embedding: number[];
   subjectUser: { discordUserId: string } | null;
   guildId: string | null;
   confidence: number;
@@ -32,6 +33,7 @@ const memorySelect = {
   type: true,
   content: true,
   normalizedContent: true,
+  embedding: true,
   subjectUser: {
     select: {
       discordUserId: true,
@@ -231,6 +233,7 @@ export class PrismaMemoryRepository implements MemoryRepository {
       type: input.type,
       content: input.content,
       normalizedContent: input.normalizedContent,
+      embedding: input.embedding,
       guildId: input.guildId,
       confidence: input.confidence,
       status: input.status,
@@ -283,6 +286,7 @@ export class PrismaMemoryRepository implements MemoryRepository {
       type: memory.type,
       content: memory.content,
       normalizedContent: memory.normalizedContent,
+      embedding: memory.embedding,
       subjectDiscordUserId: memory.subjectUser?.discordUserId ?? null,
       guildId: memory.guildId,
       confidence: memory.confidence,
@@ -292,5 +296,81 @@ export class PrismaMemoryRepository implements MemoryRepository {
       updatedAt: memory.updatedAt,
       lastConfirmedAt: memory.lastConfirmedAt,
     };
+  }
+
+  async isMemoryEnabled(discordUserId: string): Promise<boolean> {
+    const user = await this.prismaService.discordUser.findUnique({
+      where: {
+        discordUserId,
+      },
+      select: {
+        memoryEnabled: true,
+      },
+    });
+
+    return user?.memoryEnabled ?? false;
+  }
+
+  forgetOwnMemory(discordUserId: string, memoryId: string): Promise<boolean> {
+    return this.prismaService.$transaction(async (transaction) => {
+      const result = await transaction.memory.updateMany({
+        where: {
+          id: memoryId,
+          scope: 'USER',
+          status: 'ACTIVE',
+          subjectUser: { discordUserId },
+        },
+        data: { status: 'REJECTED' },
+      });
+
+      if (result.count === 0) return false;
+
+      await transaction.memoryAudit.create({
+        data: {
+          action: 'FORGET',
+          actor: { connect: { discordUserId } },
+          memory: { connect: { id: memoryId } },
+        },
+      });
+      return true;
+    });
+  }
+
+  clearOwnMemories(discordUserId: string): Promise<number> {
+    return this.prismaService.$transaction(async (transaction) => {
+      const result = await transaction.memory.updateMany({
+        where: {
+          scope: 'USER',
+          status: 'ACTIVE',
+          subjectUser: { discordUserId },
+        },
+        data: { status: 'REJECTED' },
+      });
+      await transaction.memoryAudit.create({
+        data: {
+          action: 'CLEAR',
+          actor: { connect: { discordUserId } },
+        },
+      });
+      return result.count;
+    });
+  }
+
+  async setMemoryEnabled(
+    discordUserId: string,
+    enabled: boolean,
+  ): Promise<void> {
+    await this.prismaService.$transaction(async (transaction) => {
+      await transaction.discordUser.update({
+        where: { discordUserId },
+        data: { memoryEnabled: enabled },
+      });
+      await transaction.memoryAudit.create({
+        data: {
+          action: enabled ? 'ENABLE' : 'DISABLE',
+          actor: { connect: { discordUserId } },
+        },
+      });
+    });
   }
 }

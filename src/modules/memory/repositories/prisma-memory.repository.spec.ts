@@ -16,6 +16,7 @@ describe('PrismaMemoryRepository', () => {
     type: MemoryType.FACT,
     content: 'Davi trabalha com TypeScript',
     normalizedContent: 'davi trabalha com typescript',
+    embedding: [1, 0],
     subjectUser: {
       discordUserId: 'discord-user-id',
     },
@@ -35,6 +36,7 @@ describe('PrismaMemoryRepository', () => {
     type: MemoryType.FACT,
     content: 'Davi trabalha com TypeScript',
     normalizedContent: 'davi trabalha com typescript',
+    embedding: [1, 0],
     subjectDiscordUserId: 'discord-user-id',
     guildId: null,
     confidence: 0.95,

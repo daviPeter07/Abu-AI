@@ -8,6 +8,7 @@ import type {
 import type { ExtractMemoriesFromMessageInput } from './contracts/memory-extraction.contract';
 import { MemoryScope, MemoryStatus, MemoryType } from './enums/memory.enums';
 import { MemoryExtractorService } from './memory-extractor.service';
+import { EmbeddingService } from './embedding.service';
 import {
   MEMORY_REPOSITORY,
   type MemoryRepository,
@@ -19,12 +20,20 @@ export class MemoryService {
     @Inject(MEMORY_REPOSITORY)
     private readonly memoryRepository: MemoryRepository,
     private readonly memoryExtractorService: MemoryExtractorService,
+    private readonly embeddingService: EmbeddingService,
   ) {}
 
   create(input: CreateMemoryInput): Promise<MemoryRecord> {
     const repositoryInput = this.validateCreateInput(input);
 
-    return this.memoryRepository.create(repositoryInput);
+    return this.embeddingService
+      .generate(repositoryInput.normalizedContent)
+      .then((embedding) =>
+        this.memoryRepository.create({
+          ...repositoryInput,
+          embedding,
+        }),
+      );
   }
 
   findByUser(discordUserId: string): Promise<MemoryRecord[]> {
@@ -43,6 +52,49 @@ export class MemoryService {
     );
 
     return this.memoryRepository.findByGroup(normalizedGuildId);
+  }
+
+  async listOwnMemories(discordUserId: string): Promise<MemoryRecord[]> {
+    const memories = await this.findByUser(discordUserId);
+    return memories.filter((memory) => memory.status === MemoryStatus.ACTIVE);
+  }
+
+  forgetOwnMemory(discordUserId: string, memoryId: string): Promise<boolean> {
+    return this.memoryRepository.forgetOwnMemory(
+      this.requireIdentifier(
+        discordUserId,
+        'O ID do usuário do Discord é obrigatório',
+      ),
+      this.requireIdentifier(memoryId, 'O ID da memória é obrigatório'),
+    );
+  }
+
+  clearOwnMemories(discordUserId: string): Promise<number> {
+    return this.memoryRepository.clearOwnMemories(
+      this.requireIdentifier(
+        discordUserId,
+        'O ID do usuário do Discord é obrigatório',
+      ),
+    );
+  }
+
+  setMemoryEnabled(discordUserId: string, enabled: boolean): Promise<void> {
+    return this.memoryRepository.setMemoryEnabled(
+      this.requireIdentifier(
+        discordUserId,
+        'O ID do usuário do Discord é obrigatório',
+      ),
+      enabled,
+    );
+  }
+
+  isMemoryEnabled(discordUserId: string): Promise<boolean> {
+    return this.memoryRepository.isMemoryEnabled(
+      this.requireIdentifier(
+        discordUserId,
+        'O ID do usuário do Discord é obrigatório',
+      ),
+    );
   }
 
   async extractFromMessage(
@@ -115,13 +167,26 @@ export class MemoryService {
 
         await this.memoryRepository.supersedeExtracted({
           supersededMemoryId: superseded.id,
-          memory,
+          memory: {
+            ...memory,
+            embedding: await this.embeddingService.generate(
+              memory.normalizedContent,
+            ),
+          },
           evidence,
         });
         continue;
       }
 
-      await this.memoryRepository.createExtracted(memory, evidence);
+      await this.memoryRepository.createExtracted(
+        {
+          ...memory,
+          embedding: await this.embeddingService.generate(
+            memory.normalizedContent,
+          ),
+        },
+        evidence,
+      );
     }
   }
 

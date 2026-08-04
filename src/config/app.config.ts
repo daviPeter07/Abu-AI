@@ -12,6 +12,7 @@ export const appConfig = registerAs('app', () => ({
   openRouter: {
     apiKey: process.env.OPENROUTER_API_KEY,
     model: process.env.OPENROUTER_MODEL,
+    embeddingModel: process.env.EMBEDDING_MODEL,
   },
 
   ai: {
@@ -21,6 +22,13 @@ export const appConfig = registerAs('app', () => ({
     contextCandidateMessagesLimit: Number(
       process.env.AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT ?? 50,
     ),
+    memoryMaxCharacters: Number(process.env.AI_MEMORY_MAX_CHARACTERS ?? 3_000),
+    memoryMaxItems: Number(process.env.AI_MEMORY_MAX_ITEMS ?? 10),
+  },
+
+  memory: {
+    similarityThreshold: Number(process.env.MEMORY_SIMILARITY_THRESHOLD ?? 0.7),
+    searchLimit: Number(process.env.MEMORY_SEARCH_LIMIT ?? 10),
   },
 
   database: {
@@ -39,12 +47,22 @@ export const envValidationSchema = Joi.object({
 
   OPENROUTER_MODEL: Joi.string().trim().required(),
 
+  EMBEDDING_MODEL: Joi.string().trim().required(),
+
   AI_CONTEXT_MAX_CHARACTERS: Joi.number().integer().min(2_000).default(12_000),
 
   AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT: Joi.number()
     .integer()
     .min(1)
     .default(50),
+
+  AI_MEMORY_MAX_CHARACTERS: Joi.number().integer().min(500).default(3_000),
+
+  AI_MEMORY_MAX_ITEMS: Joi.number().integer().min(1).default(10),
+
+  MEMORY_SIMILARITY_THRESHOLD: Joi.number().min(0).max(1).default(0.7),
+
+  MEMORY_SEARCH_LIMIT: Joi.number().integer().min(1).default(10),
 
   DATABASE_URL: Joi.string()
     .uri({
