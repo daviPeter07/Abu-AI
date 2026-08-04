@@ -1,0 +1,37 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ConversationMessageRole {
+  USER
+  ASSISTANT
+}
+
+model ConversationMessage {
+  id String @id @default(cuid())
+
+  discordMessageId String @unique @map("discord_message_id")
+
+  guildId   String @map("guild_id")
+  channelId String @map("channel_id")
+
+  authorId   String @map("author_id")
+  authorName String @map("author_name")
+
+  role    ConversationMessageRole
+  content String                  @db.Text
+
+  discordCreatedAt DateTime @map("discord_created_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([guildId, channelId, discordCreatedAt])
+  @@map("conversation_messages")
+}

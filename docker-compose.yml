@@ -1,0 +1,25 @@
+services:
+  postgres:
+    container_name: abu_ai_postgres
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: abu_ai_
+    ports:
+      - "5433:5432"
+    volumes:
+      - abu_ai_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d abuai",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  abu_ai_postgres_data:

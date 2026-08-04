@@ -19,6 +19,10 @@ export const appConfig = registerAs('app', () => ({
       process.env.AI_CONTEXT_MAX_CHARACTERS ?? 12_000,
     ),
   },
+
+  database: {
+    url: process.env.DATABASE_URL,
+  },
 }));
 
 export const envValidationSchema = Joi.object({
@@ -29,7 +33,14 @@ export const envValidationSchema = Joi.object({
   DISCORD_AI_CHANNEL_ID: Joi.string().pattern(/^\d+$/).required(),
 
   OPENROUTER_API_KEY: Joi.string().trim().required(),
+
   OPENROUTER_MODEL: Joi.string().trim().required(),
 
   AI_CONTEXT_MAX_CHARACTERS: Joi.number().integer().min(2_000).default(12_000),
+
+  DATABASE_URL: Joi.string()
+    .uri({
+      scheme: ['postgresql', 'postgres'],
+    })
+    .required(),
 });
