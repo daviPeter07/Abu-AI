@@ -25,7 +25,6 @@ export class DiscordClientService
   private readonly aiChannelId: string;
 
   constructor(private readonly configService: ConfigService) {
-
     this.botToken = this.configService.getOrThrow<string>(
       'app.discord.botToken',
     );

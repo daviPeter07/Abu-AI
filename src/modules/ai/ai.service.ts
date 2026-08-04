@@ -10,11 +10,9 @@ export class AiService {
   constructor(
     @Inject(AI_PROVIDER)
     private readonly aiProvider: AiProvider,
-  ) { }
+  ) {}
 
-  generateResponse(
-    input: GenerateAiResponseInput,
-  ): Promise<string> {
+  generateResponse(input: GenerateAiResponseInput): Promise<string> {
     return this.aiProvider.generateResponse(input);
   }
 }

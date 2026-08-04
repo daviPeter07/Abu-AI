@@ -7,4 +7,4 @@ import { ConversationsService } from './conversations.service';
   providers: [ConversationsService],
   exports: [ConversationsService],
 })
-export class ConversationsModule { }
+export class ConversationsModule {}

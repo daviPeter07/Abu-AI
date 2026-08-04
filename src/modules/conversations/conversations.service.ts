@@ -8,11 +8,9 @@ export interface GenerateConversationReplyInput {
 
 @Injectable()
 export class ConversationsService {
-  constructor(private readonly aiService: AiService) { }
+  constructor(private readonly aiService: AiService) {}
 
-  generateReply(
-    input: GenerateConversationReplyInput,
-  ): Promise<string> {
+  generateReply(input: GenerateConversationReplyInput): Promise<string> {
     return this.aiService.generateResponse({
       message: input.content,
       username: input.username,

@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
-import {
-  AI_PROVIDER,
-} from './contracts/ai-provider.contract';
+import { AI_PROVIDER } from './contracts/ai-provider.contract';
 import { MockAiProvider } from './providers/mock-ai.provider';
 import { AiService } from './ai.service';
 
@@ -15,4 +13,4 @@ import { AiService } from './ai.service';
   ],
   exports: [AiService],
 })
-export class AiModule { }
+export class AiModule {}

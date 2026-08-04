@@ -6,4 +6,4 @@ import { DiscordClientService } from './discord-client.service';
   imports: [ConversationsModule],
   providers: [DiscordClientService],
 })
-export class DiscordModule { }
+export class DiscordModule {}
