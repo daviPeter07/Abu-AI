@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { appConfig, envValidationSchema } from './config/app.config';
 import { DiscordModule } from './modules/discord/discord.module';
+import { AiModule } from './modules/ai/ai.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
 
 @Module({
   imports: [
@@ -16,6 +18,10 @@ import { DiscordModule } from './modules/discord/discord.module';
     }),
 
     DiscordModule,
+
+    AiModule,
+
+    ConversationsModule,
   ],
 })
 export class AppModule {}
