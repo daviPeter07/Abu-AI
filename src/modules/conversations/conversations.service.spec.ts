@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { AiService } from '../ai/ai.service';
 import type { AiMessage } from '../ai/contracts/ai-provider.contract';
@@ -33,7 +34,12 @@ describe('ConversationsService', () => {
     Parameters<ConversationMessageRepository['createIfNotExists']>
   >();
 
-  const loadRecentMessages = jest.fn<Promise<ConversationMessage[]>, []>();
+  const findRecentByChannel = jest.fn<
+    ReturnType<ConversationMessageRepository['findRecentByChannel']>,
+    Parameters<ConversationMessageRepository['findRecentByChannel']>
+  >();
+
+  const getOrThrow = jest.fn().mockReturnValue(50);
   const sendReply = jest.fn<
     Promise<PersistConversationMessageInput>,
     [string]
@@ -73,12 +79,14 @@ describe('ConversationsService', () => {
     generateResponse.mockReset();
     buildMessages.mockReset();
     createIfNotExists.mockReset();
-    loadRecentMessages.mockReset();
+    findRecentByChannel.mockReset();
+    getOrThrow.mockReset();
     sendReply.mockReset();
 
     generateResponse.mockResolvedValue('Seu nome é Davi.');
     createIfNotExists.mockResolvedValue(true);
-    loadRecentMessages.mockResolvedValue(recentMessages);
+    findRecentByChannel.mockResolvedValue(recentMessages);
+    getOrThrow.mockReturnValue(50);
     sendReply.mockResolvedValue(assistantMessage);
 
     const moduleRef = await Test.createTestingModule({
@@ -100,6 +108,13 @@ describe('ConversationsService', () => {
           provide: CONVERSATION_MESSAGE_REPOSITORY,
           useValue: {
             createIfNotExists,
+            findRecentByChannel,
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            getOrThrow,
           },
         },
       ],
@@ -143,15 +158,32 @@ describe('ConversationsService', () => {
     expect(generateResponse).toHaveBeenCalledWith({ messages });
   });
 
-  it('should persist the user message and the sent assistant message', async () => {
+  it('should persist messages and load recent context from the same channel', async () => {
     const input = createProcessInput();
 
     await conversationsService.processMessage(input);
 
     expect(createIfNotExists).toHaveBeenNthCalledWith(1, userMessage);
-    expect(loadRecentMessages).toHaveBeenCalledTimes(1);
+    expect(findRecentByChannel).toHaveBeenCalledWith({
+      guildId: 'guild-id',
+      channelId: 'channel-id',
+      excludeDiscordMessageId: 'user-message-id',
+      beforeDiscordCreatedAt: userMessage.discordCreatedAt,
+      limit: 50,
+    });
+    expect(buildMessages).toHaveBeenCalledWith({
+      content: userMessage.content,
+      username: userMessage.authorName,
+      recentMessages,
+    });
     expect(sendReply).toHaveBeenCalledWith('Seu nome é Davi.');
     expect(createIfNotExists).toHaveBeenNthCalledWith(2, assistantMessage);
+    expect(createIfNotExists.mock.invocationCallOrder[0]).toBeLessThan(
+      findRecentByChannel.mock.invocationCallOrder[0],
+    );
+    expect(getOrThrow).toHaveBeenCalledWith(
+      'app.ai.contextCandidateMessagesLimit',
+    );
   });
 
   it('should ignore a duplicated Discord event', async () => {
@@ -160,7 +192,7 @@ describe('ConversationsService', () => {
     await conversationsService.processMessage(createProcessInput());
 
     expect(createIfNotExists).toHaveBeenCalledTimes(1);
-    expect(loadRecentMessages).not.toHaveBeenCalled();
+    expect(findRecentByChannel).not.toHaveBeenCalled();
     expect(generateResponse).not.toHaveBeenCalled();
     expect(sendReply).not.toHaveBeenCalled();
   });
@@ -177,7 +209,7 @@ describe('ConversationsService', () => {
     await conversationsService.processMessage(createProcessInput());
     await conversationsService.processMessage(createProcessInput());
 
-    expect(loadRecentMessages).toHaveBeenCalledTimes(1);
+    expect(findRecentByChannel).toHaveBeenCalledTimes(1);
     expect(sendReply).toHaveBeenCalledWith('Seu nome é Davi.');
     expect(createIfNotExists).toHaveBeenNthCalledWith(3, assistantMessage);
     expect(loggerError).toHaveBeenCalled();
@@ -192,6 +224,17 @@ describe('ConversationsService', () => {
     ).rejects.toThrow('Provider unavailable');
 
     expect(createIfNotExists).toHaveBeenCalledTimes(1);
+    expect(sendReply).not.toHaveBeenCalled();
+  });
+
+  it('should not generate a reply when loading context fails', async () => {
+    findRecentByChannel.mockRejectedValue(new Error('Database unavailable'));
+
+    await expect(
+      conversationsService.processMessage(createProcessInput()),
+    ).rejects.toThrow('Database unavailable');
+
+    expect(generateResponse).not.toHaveBeenCalled();
     expect(sendReply).not.toHaveBeenCalled();
   });
 
@@ -224,7 +267,6 @@ describe('ConversationsService', () => {
   function createProcessInput(): ProcessConversationMessageInput {
     return {
       message: userMessage,
-      loadRecentMessages,
       sendReply,
     };
   }

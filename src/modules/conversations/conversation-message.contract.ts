@@ -30,6 +30,5 @@ export interface PersistConversationMessageInput {
 
 export interface ProcessConversationMessageInput {
   message: PersistConversationMessageInput;
-  loadRecentMessages: () => Promise<ConversationMessage[]>;
   sendReply: (content: string) => Promise<PersistConversationMessageInput>;
 }

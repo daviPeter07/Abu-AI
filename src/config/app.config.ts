@@ -18,6 +18,9 @@ export const appConfig = registerAs('app', () => ({
     contextMaxCharacters: Number(
       process.env.AI_CONTEXT_MAX_CHARACTERS ?? 12_000,
     ),
+    contextCandidateMessagesLimit: Number(
+      process.env.AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT ?? 50,
+    ),
   },
 
   database: {
@@ -37,6 +40,11 @@ export const envValidationSchema = Joi.object({
   OPENROUTER_MODEL: Joi.string().trim().required(),
 
   AI_CONTEXT_MAX_CHARACTERS: Joi.number().integer().min(2_000).default(12_000),
+
+  AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT: Joi.number()
+    .integer()
+    .min(1)
+    .default(50),
 
   DATABASE_URL: Joi.string()
     .uri({

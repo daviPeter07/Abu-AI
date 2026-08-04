@@ -2,7 +2,7 @@
 
 # Abu AI
 
-Abu AI is a conversational Discord bot that uses OpenRouter to answer messages in a dedicated server channel. It preserves recent Discord context and persists user and assistant messages in PostgreSQL.
+Abu AI is a conversational Discord bot that uses OpenRouter to answer messages in a dedicated server channel. It persists conversations in PostgreSQL and uses that history as recent context.
 
 > Abu AI is under active development.
 
@@ -13,7 +13,8 @@ Abu AI is a conversational Discord bot that uses OpenRouter to answer messages i
 - Uses a typing indicator and replies directly to the original message.
 - Generates responses through OpenRouter with Abu's system prompt.
 - Identifies users by their Discord display names in the AI context.
-- Loads recent Discord messages and limits the context window by characters.
+- Loads recent PostgreSQL messages and limits the context by candidates and characters.
+- Preserves conversation context after application restarts.
 - Persists user messages and the replies effectively sent by the bot.
 - Prevents duplicate Discord events from creating duplicate records or replies.
 - Connects to PostgreSQL during NestJS startup and disconnects during shutdown.
@@ -77,7 +78,7 @@ ConversationsService
       ↓
 Persist user message
       ↓
-Load recent Discord context
+Load recent PostgreSQL context
       ↓
 ConversationContextWindowService
       ↓
@@ -89,6 +90,8 @@ Persist the sent assistant message
 ```
 
 The repository uses the unique `discordMessageId` and PostgreSQL `skipDuplicates` support. A repeated event is ignored before generating another response.
+
+Recent context is isolated by Discord guild and channel. The current message and messages created after it are excluded from the history query because the current message is added separately to the context window. PostgreSQL selects the newest previous candidates first, and the repository restores chronological order before sending them to the AI.
 
 Persistence failures are handled explicitly:
 
@@ -115,6 +118,7 @@ OPENROUTER_API_KEY=
 OPENROUTER_MODEL=
 
 AI_CONTEXT_MAX_CHARACTERS=12000
+AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT=50
 
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
 ```
@@ -127,6 +131,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
 | `OPENROUTER_API_KEY` | OpenRouter API key |
 | `OPENROUTER_MODEL` | OpenRouter model identifier |
 | `AI_CONTEXT_MAX_CHARACTERS` | Maximum character budget for recent context |
+| `AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT` | Maximum number of recent database messages considered before applying the character budget |
 | `DATABASE_URL` | PostgreSQL connection string used by NestJS and Prisma |
 
 ## Local Setup
@@ -192,10 +197,9 @@ Grant these channel permissions:
 
 - View Channels
 - Send Messages
-- Read Message History
 
 Copy the target channel ID to `DISCORD_AI_CHANNEL_ID`.
 
 ## Current Status
 
-The current version includes the database foundation and conversation-message persistence. Recent context is still loaded from Discord; replacing Discord history with PostgreSQL is the next planned increment.
+The current version persists conversation messages and loads recent context from PostgreSQL. The history remains available after application restarts and is isolated by Discord guild and channel.
