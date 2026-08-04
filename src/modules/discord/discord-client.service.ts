@@ -8,7 +8,6 @@ import { ConfigService } from '@nestjs/config';
 import { Client, Events, GatewayIntentBits, type Message } from 'discord.js';
 import { ConversationsService } from '../conversations/conversations.service';
 import { mapDiscordConversationMessage } from './discord-conversation-message.mapper';
-import { DiscordConversationContextService } from './discord-conversation-context.service';
 
 @Injectable()
 export class DiscordClientService
@@ -32,7 +31,6 @@ export class DiscordClientService
   constructor(
     private readonly configService: ConfigService,
     private readonly conversationsService: ConversationsService,
-    private readonly conversationContextService: DiscordConversationContextService,
   ) {
     this.botToken = this.configService.getOrThrow<string>(
       'app.discord.botToken',
@@ -85,12 +83,6 @@ export class DiscordClientService
         return;
       }
 
-      const botUser = this.client.user;
-
-      if (!botUser) {
-        throw new Error('O usuário do bot não está disponível');
-      }
-
       const username = message.member?.displayName ?? message.author.username;
 
       this.logger.log(`Mensagem recebida de ${username}`);
@@ -99,11 +91,6 @@ export class DiscordClientService
 
       await this.conversationsService.processMessage({
         message: mapDiscordConversationMessage(message, 'USER', content),
-        loadRecentMessages: () =>
-          this.conversationContextService.getRecentMessages(
-            message,
-            botUser.id,
-          ),
         sendReply: async (response) => {
           const sentMessage = await message.reply({
             content: this.limitResponseLength(response),

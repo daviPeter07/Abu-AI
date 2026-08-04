@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AiService } from '../ai/ai.service';
 import type {
   GenerateConversationReplyInput,
@@ -14,13 +15,19 @@ import {
 @Injectable()
 export class ConversationsService {
   private readonly logger = new Logger(ConversationsService.name);
+  private readonly contextCandidateMessagesLimit: number;
 
   constructor(
     private readonly aiService: AiService,
     private readonly contextWindowService: ConversationContextWindowService,
     @Inject(CONVERSATION_MESSAGE_REPOSITORY)
     private readonly conversationMessageRepository: ConversationMessageRepository,
-  ) {}
+    configService: ConfigService,
+  ) {
+    this.contextCandidateMessagesLimit = configService.getOrThrow<number>(
+      'app.ai.contextCandidateMessagesLimit',
+    );
+  }
 
   async processMessage(input: ProcessConversationMessageInput): Promise<void> {
     const wasCreated = await this.persistMessage(input.message);
@@ -35,7 +42,14 @@ export class ConversationsService {
       return;
     }
 
-    const recentMessages = await input.loadRecentMessages();
+    const recentMessages =
+      await this.conversationMessageRepository.findRecentByChannel({
+        guildId: input.message.guildId,
+        channelId: input.message.channelId,
+        excludeDiscordMessageId: input.message.discordMessageId,
+        beforeDiscordCreatedAt: input.message.discordCreatedAt,
+        limit: this.contextCandidateMessagesLimit,
+      });
     const response = await this.generateReply({
       content: input.message.content,
       username: input.message.authorName,
