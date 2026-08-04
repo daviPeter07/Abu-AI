@@ -8,6 +8,7 @@ import {
   type DiscordUserRepository,
 } from '../discord-users/repositories/discord-user.repository';
 import { MemoryService } from '../memory/memory.service';
+import { MemorySearchService } from '../memory/memory-search.service';
 import type {
   ConversationMessage,
   GenerateConversationReplyInput,
@@ -51,6 +52,7 @@ describe('ConversationsService', () => {
 
   const getOrThrow = jest.fn().mockReturnValue(50);
   const extractFromMessage = jest.fn();
+  const searchMemories = jest.fn();
   const sendReply = jest.fn<
     Promise<PersistConversationMessageInput>,
     [string]
@@ -96,6 +98,7 @@ describe('ConversationsService', () => {
     upsertDiscordUser.mockReset();
     getOrThrow.mockReset();
     extractFromMessage.mockReset();
+    searchMemories.mockReset();
     sendReply.mockReset();
 
     generateResponse.mockResolvedValue('Seu nome é Davi.');
@@ -114,6 +117,7 @@ describe('ConversationsService', () => {
     getOrThrow.mockReturnValue(50);
     sendReply.mockResolvedValue(assistantMessage);
     extractFromMessage.mockResolvedValue(undefined);
+    searchMemories.mockResolvedValue([]);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -153,6 +157,12 @@ describe('ConversationsService', () => {
           provide: MemoryService,
           useValue: {
             extractFromMessage,
+          },
+        },
+        {
+          provide: MemorySearchService,
+          useValue: {
+            search: searchMemories,
           },
         },
       ],
@@ -219,6 +229,7 @@ describe('ConversationsService', () => {
       content: userMessage.content,
       username: userMessage.authorName,
       recentMessages,
+      relevantMemories: [],
     });
     expect(sendReply).toHaveBeenCalledWith('Seu nome é Davi.');
     expect(upsertDiscordUser).toHaveBeenNthCalledWith(2, {

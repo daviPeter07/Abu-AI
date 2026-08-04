@@ -20,6 +20,8 @@ Abu AI is a conversational Discord bot that uses OpenRouter to answer messages i
 - Supports manually creating and querying user and group memories.
 - Extracts explicit memories with a dedicated structured AI prompt.
 - Confirms equivalent memories and preserves superseded history.
+- Retrieves relevant memories through embeddings and cosine similarity.
+- Lets users view, forget, clear, disable, and enable their own memories.
 - Prevents duplicate Discord events from creating duplicate records or replies.
 - Connects to PostgreSQL during NestJS startup and disconnects during shutdown.
 
@@ -133,7 +135,18 @@ The `MemoryModule` supports manually creating and querying contextual memories t
 
 Memory extraction runs synchronously after the Discord reply is delivered. The extractor validates strict JSON, rejects sensitive information, ignores repeated evidence, increases confidence when information is confirmed, and marks contradicted memories as `SUPERSEDED` without deleting history.
 
-Memory injection into AI conversations is not automatic yet. Redis, BullMQ, workers, embeddings, and vector search are not part of the current implementation.
+Relevant memories are now injected into the AI context as delimited, untrusted data with separate item and character budgets. Prisma ORM 7 stores embeddings as `Float[]`; cosine similarity is calculated in the application because stable Prisma does not yet expose type-safe pgvector queries.
+
+Memory management commands:
+
+- `/memorias`
+- `/esquecer <memoryId>`
+- `/limpar-memorias`
+- `/memoria-status`
+- `/memoria-status ativar`
+- `/memoria-status desativar`
+
+Users can only view or change their own individual memories. Changes are soft deletions through `REJECTED` status and are recorded in the memory audit table.
 
 ## Environment Variables
 
@@ -147,9 +160,15 @@ DISCORD_AI_CHANNEL_ID=
 
 OPENROUTER_API_KEY=
 OPENROUTER_MODEL=
+EMBEDDING_MODEL=openai/text-embedding-3-small
 
 AI_CONTEXT_MAX_CHARACTERS=12000
 AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT=50
+AI_MEMORY_MAX_CHARACTERS=3000
+AI_MEMORY_MAX_ITEMS=10
+
+MEMORY_SIMILARITY_THRESHOLD=0.7
+MEMORY_SEARCH_LIMIT=10
 
 DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
 ```
@@ -161,8 +180,13 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
 | `DISCORD_AI_CHANNEL_ID` | Channel where Abu receives and answers messages |
 | `OPENROUTER_API_KEY` | OpenRouter API key |
 | `OPENROUTER_MODEL` | OpenRouter model identifier |
+| `EMBEDDING_MODEL` | OpenRouter embedding model identifier |
 | `AI_CONTEXT_MAX_CHARACTERS` | Maximum character budget for recent context |
 | `AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT` | Maximum number of recent database messages considered before applying the character budget |
+| `AI_MEMORY_MAX_CHARACTERS` | Character budget for retrieved memories |
+| `AI_MEMORY_MAX_ITEMS` | Maximum retrieved memories added to the AI context |
+| `MEMORY_SIMILARITY_THRESHOLD` | Minimum cosine similarity accepted during retrieval |
+| `MEMORY_SEARCH_LIMIT` | Maximum semantic search results |
 | `DATABASE_URL` | PostgreSQL connection string used by NestJS and Prisma |
 
 ## Local Setup
@@ -233,4 +257,4 @@ Copy the target channel ID to `DISCORD_AI_CHANNEL_ID`.
 
 ## Current Status
 
-The current version persists conversations, maintains Discord user profiles, loads recent PostgreSQL context, and extracts deduplicated contextual memories after each delivered response.
+The current version persists conversations, extracts contextual memories, retrieves relevant memories semantically, injects them safely into AI context, and gives users control over their individual memory.

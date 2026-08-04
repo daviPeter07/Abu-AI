@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Client, Events, GatewayIntentBits, type Message } from 'discord.js';
 import { ConversationsService } from '../conversations/conversations.service';
 import { mapDiscordConversationMessage } from './discord-conversation-message.mapper';
+import { DiscordMemoryCommandsService } from './discord-memory-commands.service';
 
 @Injectable()
 export class DiscordClientService
@@ -31,6 +32,7 @@ export class DiscordClientService
   constructor(
     private readonly configService: ConfigService,
     private readonly conversationsService: ConversationsService,
+    private readonly memoryCommandsService: DiscordMemoryCommandsService,
   ) {
     this.botToken = this.configService.getOrThrow<string>(
       'app.discord.botToken',
@@ -80,6 +82,10 @@ export class DiscordClientService
       const content = message.content.trim();
 
       if (!content) {
+        return;
+      }
+
+      if (await this.memoryCommandsService.handle(message)) {
         return;
       }
 

@@ -6,6 +6,7 @@ import type {
 import { MemoryScope, MemoryStatus, MemoryType } from './enums/memory.enums';
 import { MemoryService } from './memory.service';
 import { MemoryExtractorService } from './memory-extractor.service';
+import { EmbeddingService } from './embedding.service';
 import {
   MEMORY_REPOSITORY,
   type MemoryRepository,
@@ -43,6 +44,7 @@ describe('MemoryService', () => {
     Parameters<MemoryRepository['supersedeExtracted']>
   >();
   const extract = jest.fn();
+  const generateEmbedding = jest.fn();
 
   const now = new Date('2026-08-04T12:00:00.000Z');
   const memory: MemoryRecord = {
@@ -51,6 +53,7 @@ describe('MemoryService', () => {
     type: MemoryType.PREFERENCE,
     content: 'Davi gosta de TypeScript',
     normalizedContent: 'davi gosta de typescript',
+    embedding: [1, 0],
     subjectDiscordUserId: 'discord-user-id',
     guildId: null,
     confidence: 0.9,
@@ -79,6 +82,7 @@ describe('MemoryService', () => {
     confirmExtracted.mockReset();
     supersedeExtracted.mockReset();
     extract.mockReset();
+    generateEmbedding.mockReset();
 
     create.mockResolvedValue(memory);
     findByUser.mockResolvedValue([memory]);
@@ -88,6 +92,7 @@ describe('MemoryService', () => {
     confirmExtracted.mockResolvedValue(true);
     supersedeExtracted.mockResolvedValue(true);
     extract.mockResolvedValue([]);
+    generateEmbedding.mockResolvedValue([1, 0]);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -110,6 +115,12 @@ describe('MemoryService', () => {
             extract,
           },
         },
+        {
+          provide: EmbeddingService,
+          useValue: {
+            generate: generateEmbedding,
+          },
+        },
       ],
     }).compile();
 
@@ -124,6 +135,7 @@ describe('MemoryService', () => {
       type: MemoryType.PREFERENCE,
       content: 'Davi   GOSTA de TypeScript',
       normalizedContent: 'davi gosta de typescript',
+      embedding: [1, 0],
       subjectDiscordUserId: 'discord-user-id',
       guildId: undefined,
       confidence: 0.9,

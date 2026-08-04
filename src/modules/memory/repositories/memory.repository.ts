@@ -22,4 +22,8 @@ export interface MemoryRepository {
   ): Promise<boolean>;
   confirmExtracted(input: ConfirmExtractedMemoryInput): Promise<boolean>;
   supersedeExtracted(input: SupersedeExtractedMemoryInput): Promise<boolean>;
+  isMemoryEnabled(discordUserId: string): Promise<boolean>;
+  forgetOwnMemory(discordUserId: string, memoryId: string): Promise<boolean>;
+  clearOwnMemories(discordUserId: string): Promise<number>;
+  setMemoryEnabled(discordUserId: string, enabled: boolean): Promise<void>;
 }

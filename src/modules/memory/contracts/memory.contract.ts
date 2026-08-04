@@ -21,6 +21,7 @@ export interface CreateMemoryRepositoryInput {
   type: MemoryType;
   content: string;
   normalizedContent: string;
+  embedding?: number[];
   subjectDiscordUserId?: string;
   guildId?: string;
   confidence: number;
@@ -35,6 +36,7 @@ export interface MemoryRecord {
   type: MemoryType;
   content: string;
   normalizedContent: string;
+  embedding: number[];
   subjectDiscordUserId: string | null;
   guildId: string | null;
   confidence: number;
@@ -46,6 +48,12 @@ export interface MemoryRecord {
 }
 
 export interface FindActiveMemoryCandidatesInput {
+  discordUserId: string;
+  guildId: string;
+}
+
+export interface SearchRelevantMemoriesInput {
+  query: string;
   discordUserId: string;
   guildId: string;
 }
