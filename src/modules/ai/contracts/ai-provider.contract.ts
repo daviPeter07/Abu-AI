@@ -9,6 +9,7 @@ export interface AiMessage {
 
 export interface GenerateAiResponseInput {
   messages: AiMessage[];
+  responseFormat?: 'text' | 'json';
 }
 
 export interface AiProvider {

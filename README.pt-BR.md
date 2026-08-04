@@ -18,6 +18,8 @@ O Abu AI é um bot conversacional para Discord que utiliza o OpenRouter para res
 - Persiste mensagens dos usuários e as respostas efetivamente enviadas pelo bot.
 - Mantém um perfil por ID imutável do Discord e atualiza mudanças de nome.
 - Permite criar e consultar manualmente memórias de usuário e de grupo.
+- Extrai memórias explícitas com um prompt estruturado específico.
+- Confirma memórias equivalentes e preserva o histórico substituído.
 - Impede que eventos repetidos do Discord criem registros ou respostas duplicadas.
 - Conecta-se ao PostgreSQL durante a inicialização do NestJS e desconecta no encerramento.
 
@@ -129,7 +131,9 @@ O `MemoryModule` permite criar e consultar memórias contextuais manualmente pel
 - A confiança deve estar entre `0` e `1`.
 - Uma memória pode referenciar sua mensagem de origem no Discord.
 
-A extração de memórias e a injeção nas conversas da IA ainda não são automáticas. Redis, BullMQ, workers, embeddings e busca vetorial não fazem parte da implementação atual.
+A extração de memórias é executada de forma síncrona depois que a resposta é entregue no Discord. O extrator valida JSON estrito, rejeita informações sensíveis, ignora evidências repetidas, aumenta a confiança em confirmações e marca contradições como `SUPERSEDED` sem apagar o histórico.
+
+A injeção de memórias nas conversas da IA ainda não é automática. Redis, BullMQ, workers, embeddings e busca vetorial não fazem parte da implementação atual.
 
 ## Variáveis de Ambiente
 
@@ -229,4 +233,4 @@ Copie o ID do canal desejado para `DISCORD_AI_CHANNEL_ID`.
 
 ## Estado Atual
 
-A versão atual persiste conversas, mantém perfis de usuários do Discord, carrega contexto recente do PostgreSQL e fornece a fundação manual de memória contextual. A extração automática de memórias é o próximo incremento planejado.
+A versão atual persiste conversas, mantém perfis de usuários do Discord, carrega contexto recente do PostgreSQL e extrai memórias contextuais deduplicadas após cada resposta entregue.

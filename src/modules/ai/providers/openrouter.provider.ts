@@ -31,6 +31,12 @@ export class OpenRouterProvider implements AiProvider {
         chatRequest: {
           model: this.model,
           stream: false,
+          responseFormat:
+            input.responseFormat === 'json'
+              ? {
+                  type: 'json_object',
+                }
+              : undefined,
           messages: input.messages.map((message) => {
             switch (message.role) {
               case 'system':

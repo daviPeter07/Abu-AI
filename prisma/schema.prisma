@@ -72,7 +72,8 @@ model ConversationMessage {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  sourceMemories Memory[] @relation("MemorySource")
+  sourceMemories Memory[]         @relation("MemorySource")
+  memoryEvidence MemoryEvidence[]
 
   @@index([authorId])
   @@index([guildId, channelId, discordCreatedAt])
@@ -103,8 +104,28 @@ model Memory {
   updatedAt       DateTime  @updatedAt @map("updated_at")
   lastConfirmedAt DateTime? @map("last_confirmed_at")
 
+  evidence MemoryEvidence[]
+
   @@index([scope, subjectUserId, createdAt])
   @@index([scope, guildId, createdAt])
   @@index([sourceMessageId])
   @@map("memories")
+}
+
+model MemoryEvidence {
+  id String @id @default(cuid())
+
+  idempotencyKey String @unique @map("idempotency_key")
+
+  memoryId String @map("memory_id")
+  memory   Memory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+
+  sourceMessageId String              @map("source_message_id")
+  sourceMessage   ConversationMessage @relation(fields: [sourceMessageId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([memoryId])
+  @@index([sourceMessageId])
+  @@map("memory_evidence")
 }
