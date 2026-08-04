@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Client, Events, GatewayIntentBits, type Message } from 'discord.js';
 import { ConversationsService } from '../conversations/conversations.service';
+import { mapDiscordConversationMessage } from './discord-conversation-message.mapper';
 import { DiscordConversationContextService } from './discord-conversation-context.service';
 
 @Injectable()
@@ -96,22 +97,26 @@ export class DiscordClientService
 
       await message.channel.sendTyping();
 
-      const recentMessages =
-        await this.conversationContextService.getRecentMessages(
-          message,
-          botUser.id,
-        );
+      await this.conversationsService.processMessage({
+        message: mapDiscordConversationMessage(message, 'USER', content),
+        loadRecentMessages: () =>
+          this.conversationContextService.getRecentMessages(
+            message,
+            botUser.id,
+          ),
+        sendReply: async (response) => {
+          const sentMessage = await message.reply({
+            content: this.limitResponseLength(response),
+            allowedMentions: {
+              repliedUser: false,
+            },
+          });
 
-      const response = await this.conversationsService.generateReply({
-        content,
-        username,
-        recentMessages,
-      });
-
-      await message.reply({
-        content: this.limitResponseLength(response),
-        allowedMentions: {
-          repliedUser: false,
+          return mapDiscordConversationMessage(
+            sentMessage,
+            'ASSISTANT',
+            sentMessage.content,
+          );
         },
       });
     } catch (error) {

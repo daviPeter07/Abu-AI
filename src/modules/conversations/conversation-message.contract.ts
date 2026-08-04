@@ -14,3 +14,22 @@ export interface GenerateConversationReplyInput {
   username: string;
   recentMessages: ConversationMessage[];
 }
+
+export type PersistedConversationMessageRole = 'USER' | 'ASSISTANT';
+
+export interface PersistConversationMessageInput {
+  discordMessageId: string;
+  guildId: string;
+  channelId: string;
+  authorId: string;
+  authorName: string;
+  role: PersistedConversationMessageRole;
+  content: string;
+  discordCreatedAt: Date;
+}
+
+export interface ProcessConversationMessageInput {
+  message: PersistConversationMessageInput;
+  loadRecentMessages: () => Promise<ConversationMessage[]>;
+  sendReply: (content: string) => Promise<PersistConversationMessageInput>;
+}
