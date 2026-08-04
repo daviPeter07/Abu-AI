@@ -22,6 +22,7 @@ export interface PersistConversationMessageInput {
   guildId: string;
   channelId: string;
   authorId: string;
+  authorUsername: string;
   authorName: string;
   role: PersistedConversationMessageRole;
   content: string;

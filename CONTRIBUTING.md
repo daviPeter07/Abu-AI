@@ -111,7 +111,7 @@ Each module should own a clear responsibility:
 discord       Discord connection and events
 ai            AI providers and response generation
 conversations Conversation orchestration and history
-knowledge     Contextual memory and semantic retrieval
+memory        Contextual memory and semantic retrieval
 database      Persistence and database access
 ```
 

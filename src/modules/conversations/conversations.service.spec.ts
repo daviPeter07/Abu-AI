@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { AiService } from '../ai/ai.service';
 import type { AiMessage } from '../ai/contracts/ai-provider.contract';
+import {
+  DISCORD_USER_REPOSITORY,
+  type DiscordUserRepository,
+} from '../discord-users/repositories/discord-user.repository';
 import type {
   ConversationMessage,
   GenerateConversationReplyInput,
@@ -39,6 +43,11 @@ describe('ConversationsService', () => {
     Parameters<ConversationMessageRepository['findRecentByChannel']>
   >();
 
+  const upsertDiscordUser = jest.fn<
+    ReturnType<DiscordUserRepository['upsert']>,
+    Parameters<DiscordUserRepository['upsert']>
+  >();
+
   const getOrThrow = jest.fn().mockReturnValue(50);
   const sendReply = jest.fn<
     Promise<PersistConversationMessageInput>,
@@ -50,6 +59,7 @@ describe('ConversationsService', () => {
     guildId: 'guild-id',
     channelId: 'channel-id',
     authorId: 'user-id',
+    authorUsername: 'davi',
     authorName: 'Davi',
     role: 'USER',
     content: 'Qual é meu nome?',
@@ -61,6 +71,7 @@ describe('ConversationsService', () => {
     guildId: 'guild-id',
     channelId: 'channel-id',
     authorId: 'bot-id',
+    authorUsername: 'abu-bot',
     authorName: 'Abu',
     role: 'ASSISTANT',
     content: 'Seu nome é Davi.',
@@ -80,12 +91,23 @@ describe('ConversationsService', () => {
     buildMessages.mockReset();
     createIfNotExists.mockReset();
     findRecentByChannel.mockReset();
+    upsertDiscordUser.mockReset();
     getOrThrow.mockReset();
     sendReply.mockReset();
 
     generateResponse.mockResolvedValue('Seu nome é Davi.');
     createIfNotExists.mockResolvedValue(true);
     findRecentByChannel.mockResolvedValue(recentMessages);
+    upsertDiscordUser.mockResolvedValue({
+      id: 'internal-user-id',
+      discordUserId: 'user-id',
+      username: 'davi',
+      displayName: 'Davi',
+      firstSeenAt: userMessage.discordCreatedAt,
+      lastSeenAt: userMessage.discordCreatedAt,
+      createdAt: userMessage.discordCreatedAt,
+      updatedAt: userMessage.discordCreatedAt,
+    });
     getOrThrow.mockReturnValue(50);
     sendReply.mockResolvedValue(assistantMessage);
 
@@ -115,6 +137,12 @@ describe('ConversationsService', () => {
           provide: ConfigService,
           useValue: {
             getOrThrow,
+          },
+        },
+        {
+          provide: DISCORD_USER_REPOSITORY,
+          useValue: {
+            upsert: upsertDiscordUser,
           },
         },
       ],
@@ -163,6 +191,12 @@ describe('ConversationsService', () => {
 
     await conversationsService.processMessage(input);
 
+    expect(upsertDiscordUser).toHaveBeenNthCalledWith(1, {
+      discordUserId: 'user-id',
+      username: 'davi',
+      displayName: 'Davi',
+      seenAt: userMessage.discordCreatedAt,
+    });
     expect(createIfNotExists).toHaveBeenNthCalledWith(1, userMessage);
     expect(findRecentByChannel).toHaveBeenCalledWith({
       guildId: 'guild-id',
@@ -177,7 +211,16 @@ describe('ConversationsService', () => {
       recentMessages,
     });
     expect(sendReply).toHaveBeenCalledWith('Seu nome é Davi.');
+    expect(upsertDiscordUser).toHaveBeenNthCalledWith(2, {
+      discordUserId: 'bot-id',
+      username: 'abu-bot',
+      displayName: 'Abu',
+      seenAt: assistantMessage.discordCreatedAt,
+    });
     expect(createIfNotExists).toHaveBeenNthCalledWith(2, assistantMessage);
+    expect(upsertDiscordUser.mock.invocationCallOrder[0]).toBeLessThan(
+      createIfNotExists.mock.invocationCallOrder[0],
+    );
     expect(createIfNotExists.mock.invocationCallOrder[0]).toBeLessThan(
       findRecentByChannel.mock.invocationCallOrder[0],
     );
@@ -195,6 +238,20 @@ describe('ConversationsService', () => {
     expect(findRecentByChannel).not.toHaveBeenCalled();
     expect(generateResponse).not.toHaveBeenCalled();
     expect(sendReply).not.toHaveBeenCalled();
+  });
+
+  it('should stop when updating the user profile fails', async () => {
+    const loggerError = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation();
+    upsertDiscordUser.mockRejectedValue(new Error('Database unavailable'));
+
+    await conversationsService.processMessage(createProcessInput());
+
+    expect(createIfNotExists).not.toHaveBeenCalled();
+    expect(findRecentByChannel).not.toHaveBeenCalled();
+    expect(sendReply).not.toHaveBeenCalled();
+    expect(loggerError).toHaveBeenCalled();
   });
 
   it('should wait for a successful retry when persisting the user message fails', async () => {
@@ -261,6 +318,32 @@ describe('ConversationsService', () => {
     ).resolves.toBeUndefined();
 
     expect(sendReply).toHaveBeenCalledTimes(1);
+    expect(loggerError).toHaveBeenCalled();
+  });
+
+  it('should keep the delivered reply when updating the bot profile fails', async () => {
+    const loggerError = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation();
+    upsertDiscordUser
+      .mockResolvedValueOnce({
+        id: 'internal-user-id',
+        discordUserId: 'user-id',
+        username: 'davi',
+        displayName: 'Davi',
+        firstSeenAt: userMessage.discordCreatedAt,
+        lastSeenAt: userMessage.discordCreatedAt,
+        createdAt: userMessage.discordCreatedAt,
+        updatedAt: userMessage.discordCreatedAt,
+      })
+      .mockRejectedValueOnce(new Error('Database unavailable'));
+
+    await expect(
+      conversationsService.processMessage(createProcessInput()),
+    ).resolves.toBeUndefined();
+
+    expect(sendReply).toHaveBeenCalledTimes(1);
+    expect(createIfNotExists).toHaveBeenCalledTimes(1);
     expect(loggerError).toHaveBeenCalled();
   });
 

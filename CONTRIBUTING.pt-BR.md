@@ -111,7 +111,7 @@ Cada módulo deve possuir uma responsabilidade clara:
 discord       Conexão e eventos do Discord
 ai            Provedores de IA e geração de respostas
 conversations Orquestração e histórico das conversas
-knowledge     Memória contextual e recuperação semântica
+memory        Memória contextual e recuperação semântica
 database      Persistência e acesso ao banco
 ```
 

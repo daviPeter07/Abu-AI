@@ -14,6 +14,7 @@ export function mapDiscordConversationMessage(
     guildId: message.guildId,
     channelId: message.channelId,
     authorId: message.author.id,
+    authorUsername: message.author.username,
     authorName: message.member?.displayName ?? message.author.username,
     role,
     content,

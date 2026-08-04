@@ -4,6 +4,7 @@ import { appConfig, envValidationSchema } from './config/app.config';
 import { DiscordModule } from './modules/discord/discord.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
+import { MemoryModule } from './modules/memory/memory.module';
 
 @Module({
   imports: [
@@ -22,6 +23,8 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
     AiModule,
 
     ConversationsModule,
+
+    MemoryModule,
   ],
 })
 export class AppModule {}

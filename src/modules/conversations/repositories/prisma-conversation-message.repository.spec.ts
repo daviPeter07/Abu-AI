@@ -14,6 +14,7 @@ describe('PrismaConversationMessageRepository', () => {
     guildId: 'guild-id',
     channelId: 'channel-id',
     authorId: 'author-id',
+    authorUsername: 'davi',
     authorName: 'Davi',
     role: 'USER',
     content: 'Olá, Abu!',
@@ -48,7 +49,16 @@ describe('PrismaConversationMessageRepository', () => {
     await expect(repository.createIfNotExists(message)).resolves.toBe(true);
 
     expect(createMany).toHaveBeenCalledWith({
-      data: message,
+      data: {
+        discordMessageId: message.discordMessageId,
+        guildId: message.guildId,
+        channelId: message.channelId,
+        authorId: message.authorId,
+        authorName: message.authorName,
+        role: message.role,
+        content: message.content,
+        discordCreatedAt: message.discordCreatedAt,
+      },
       skipDuplicates: true,
     });
   });

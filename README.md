@@ -16,6 +16,8 @@ Abu AI is a conversational Discord bot that uses OpenRouter to answer messages i
 - Loads recent PostgreSQL messages and limits the context by candidates and characters.
 - Preserves conversation context after application restarts.
 - Persists user messages and the replies effectively sent by the bot.
+- Maintains one profile per immutable Discord user ID and updates changed names.
+- Supports manually creating and querying user and group memories.
 - Prevents duplicate Discord events from creating duplicate records or replies.
 - Connects to PostgreSQL during NestJS startup and disconnects during shutdown.
 
@@ -48,7 +50,9 @@ src/
 │   ├── conversations/
 │   │   └── repositories/
 │   ├── database/
-│   └── discord/
+│   ├── discord/
+│   ├── discord-users/
+│   └── memory/
 ├── app.module.ts
 └── main.ts
 
@@ -64,6 +68,8 @@ prisma/
 | `ai` | Defines the AI provider contract and OpenRouter implementation |
 | `conversations` | Orchestrates persistence, context window, and response generation |
 | `discord` | Translates Discord events and messages to application contracts |
+| `discord-users` | Maintains Discord profiles identified by immutable user IDs |
+| `memory` | Validates and persists contextual user and group memories |
 
 `DatabaseModule` is not global. Modules that need database access must import it explicitly.
 
@@ -75,6 +81,8 @@ Discord message
 DiscordClientService
       ↓
 ConversationsService
+      ↓
+Upsert Discord user profile
       ↓
 Persist user message
       ↓
@@ -103,6 +111,25 @@ Persistence failures are handled explicitly:
 Operational error responses are intentionally not persisted as conversation history.
 
 External Discord and OpenRouter calls are not wrapped in a database transaction.
+
+## User Profiles
+
+Every message author is associated with a `DiscordUser` profile through the immutable Discord user ID. Username and display name changes update the same profile instead of creating another user. Messages keep `authorName` as a historical snapshot of the name displayed when they were sent.
+
+The user-profile migration backfills existing message authors. Historical usernames remain empty when they cannot be reconstructed safely and are updated when the user sends another message.
+
+## Memory Foundation
+
+The `MemoryModule` supports manually creating and querying contextual memories through `MemoryService`:
+
+- `USER` memories require a subject Discord user.
+- `GROUP` memories require a Discord guild and may optionally reference a subject user.
+- Types include facts, preferences, relationships, projects, events, and other information.
+- Statuses include active, superseded, and rejected.
+- Confidence must be between `0` and `1`.
+- A memory can reference its source Discord message.
+
+Memory extraction and injection into AI conversations are not automatic yet. Redis, BullMQ, workers, embeddings, and vector search are not part of the current implementation.
 
 ## Environment Variables
 
@@ -202,4 +229,4 @@ Copy the target channel ID to `DISCORD_AI_CHANNEL_ID`.
 
 ## Current Status
 
-The current version persists conversation messages and loads recent context from PostgreSQL. The history remains available after application restarts and is isolated by Discord guild and channel.
+The current version persists conversations, maintains Discord user profiles, loads recent PostgreSQL context, and provides the manual contextual-memory foundation. Automatic memory extraction is the next planned increment.

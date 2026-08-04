@@ -17,7 +17,16 @@ export class PrismaConversationMessageRepository implements ConversationMessageR
     input: PersistConversationMessageInput,
   ): Promise<boolean> {
     const result = await this.prismaService.conversationMessage.createMany({
-      data: input,
+      data: {
+        discordMessageId: input.discordMessageId,
+        guildId: input.guildId,
+        channelId: input.channelId,
+        authorId: input.authorId,
+        authorName: input.authorName,
+        role: input.role,
+        content: input.content,
+        discordCreatedAt: input.discordCreatedAt,
+      },
       skipDuplicates: true,
     });
 
