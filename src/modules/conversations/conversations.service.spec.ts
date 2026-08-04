@@ -1,6 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { AiService } from '../ai/ai.service';
-import { ABU_SYSTEM_PROMPT } from '../ai/prompts/abu-system-prompt';
+import type { AiMessage } from '../ai/contracts/ai-provider.contract';
+import type { GenerateConversationReplyInput } from './conversation-message.contract';
+import { ConversationContextWindowService } from './conversation-context-window.service';
 import { ConversationsService } from './conversations.service';
 
 describe('ConversationsService', () => {
@@ -11,8 +13,15 @@ describe('ConversationsService', () => {
     Parameters<AiService['generateResponse']>
   >();
 
+  const buildMessages = jest.fn<
+    ReturnType<ConversationContextWindowService['buildMessages']>,
+    Parameters<ConversationContextWindowService['buildMessages']>
+  >();
+
   beforeEach(async () => {
     generateResponse.mockReset();
+    buildMessages.mockReset();
+
     generateResponse.mockResolvedValue('Resposta do Abu');
 
     const moduleRef = await Test.createTestingModule({
@@ -24,14 +33,20 @@ describe('ConversationsService', () => {
             generateResponse,
           },
         },
+        {
+          provide: ConversationContextWindowService,
+          useValue: {
+            buildMessages,
+          },
+        },
       ],
     }).compile();
 
     conversationsService = moduleRef.get(ConversationsService);
   });
 
-  it('should include recent messages before the current message', async () => {
-    const response = await conversationsService.generateReply({
+  it('should generate a response using the managed context window', async () => {
+    const input: GenerateConversationReplyInput = {
       username: 'Davi',
       content: 'Qual é meu nome?',
       recentMessages: [
@@ -40,76 +55,34 @@ describe('ConversationsService', () => {
           username: 'Davi',
           content: 'Meu nome é Davi.',
         },
-        {
-          role: 'assistant',
-          content: 'Prazer em conhecer você.',
-        },
-        {
-          role: 'user',
-          username: 'Ana',
-          content: 'Meu nome é Ana.',
-        },
       ],
-    });
+    };
+
+    const messages: AiMessage[] = [
+      {
+        role: 'system',
+        content: 'System prompt',
+      },
+      {
+        role: 'user',
+        content: 'Meu nome é Davi.',
+      },
+      {
+        role: 'user',
+        content: 'Qual é meu nome?',
+      },
+    ];
+
+    buildMessages.mockReturnValue(messages);
+
+    const response = await conversationsService.generateReply(input);
 
     expect(response).toBe('Resposta do Abu');
 
-    expect(generateResponse).toHaveBeenCalledWith({
-      messages: [
-        {
-          role: 'system',
-          content: ABU_SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: [
-            'Nome do usuário no Discord: Davi',
-            '',
-            'Meu nome é Davi.',
-          ].join('\n'),
-        },
-        {
-          role: 'assistant',
-          content: 'Prazer em conhecer você.',
-        },
-        {
-          role: 'user',
-          content: [
-            'Nome do usuário no Discord: Ana',
-            '',
-            'Meu nome é Ana.',
-          ].join('\n'),
-        },
-        {
-          role: 'user',
-          content: [
-            'Nome do usuário no Discord: Davi',
-            '',
-            'Qual é meu nome?',
-          ].join('\n'),
-        },
-      ],
-    });
-  });
-
-  it('should generate a reply without recent messages', async () => {
-    await conversationsService.generateReply({
-      username: 'Davi',
-      content: 'Olá',
-      recentMessages: [],
-    });
+    expect(buildMessages).toHaveBeenCalledWith(input);
 
     expect(generateResponse).toHaveBeenCalledWith({
-      messages: [
-        {
-          role: 'system',
-          content: ABU_SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: ['Nome do usuário no Discord: Davi', '', 'Olá'].join('\n'),
-        },
-      ],
+      messages,
     });
   });
 });
