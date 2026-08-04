@@ -30,10 +30,26 @@ describe('ConversationsService', () => {
     conversationsService = moduleRef.get(ConversationsService);
   });
 
-  it('should include Abu personality and user message', async () => {
+  it('should include recent messages before the current message', async () => {
     const response = await conversationsService.generateReply({
       username: 'Davi',
-      content: 'Quem é você?',
+      content: 'Qual é meu nome?',
+      recentMessages: [
+        {
+          role: 'user',
+          username: 'Davi',
+          content: 'Meu nome é Davi.',
+        },
+        {
+          role: 'assistant',
+          content: 'Prazer em conhecer você.',
+        },
+        {
+          role: 'user',
+          username: 'Ana',
+          content: 'Meu nome é Ana.',
+        },
+      ],
     });
 
     expect(response).toBe('Resposta do Abu');
@@ -49,8 +65,49 @@ describe('ConversationsService', () => {
           content: [
             'Nome do usuário no Discord: Davi',
             '',
-            'Quem é você?',
+            'Meu nome é Davi.',
           ].join('\n'),
+        },
+        {
+          role: 'assistant',
+          content: 'Prazer em conhecer você.',
+        },
+        {
+          role: 'user',
+          content: [
+            'Nome do usuário no Discord: Ana',
+            '',
+            'Meu nome é Ana.',
+          ].join('\n'),
+        },
+        {
+          role: 'user',
+          content: [
+            'Nome do usuário no Discord: Davi',
+            '',
+            'Qual é meu nome?',
+          ].join('\n'),
+        },
+      ],
+    });
+  });
+
+  it('should generate a reply without recent messages', async () => {
+    await conversationsService.generateReply({
+      username: 'Davi',
+      content: 'Olá',
+      recentMessages: [],
+    });
+
+    expect(generateResponse).toHaveBeenCalledWith({
+      messages: [
+        {
+          role: 'system',
+          content: ABU_SYSTEM_PROMPT,
+        },
+        {
+          role: 'user',
+          content: ['Nome do usuário no Discord: Davi', '', 'Olá'].join('\n'),
         },
       ],
     });

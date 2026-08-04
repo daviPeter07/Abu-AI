@@ -5,14 +5,16 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Client, Events, GatewayIntentBits, Message } from 'discord.js';
+import { Client, Events, GatewayIntentBits, type Message } from 'discord.js';
 import { ConversationsService } from '../conversations/conversations.service';
+import { DiscordConversationContextService } from './discord-conversation-context.service';
 
 @Injectable()
 export class DiscordClientService
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
   private static readonly MAX_MESSAGE_LENGTH = 2_000;
+
   private readonly logger = new Logger(DiscordClientService.name);
 
   private readonly client = new Client({
@@ -29,6 +31,7 @@ export class DiscordClientService
   constructor(
     private readonly configService: ConfigService,
     private readonly conversationsService: ConversationsService,
+    private readonly conversationContextService: DiscordConversationContextService,
   ) {
     this.botToken = this.configService.getOrThrow<string>(
       'app.discord.botToken',
@@ -81,13 +84,28 @@ export class DiscordClientService
         return;
       }
 
-      this.logger.log(`Mensagem recebida de ${message.author.username}`);
+      const botUser = this.client.user;
+
+      if (!botUser) {
+        throw new Error('O usuário do bot não está disponível');
+      }
+
+      const username = message.member?.displayName ?? message.author.username;
+
+      this.logger.log(`Mensagem recebida de ${username}`);
 
       await message.channel.sendTyping();
 
+      const recentMessages =
+        await this.conversationContextService.getRecentMessages(
+          message,
+          botUser.id,
+        );
+
       const response = await this.conversationsService.generateReply({
         content,
-        username: message.author.username,
+        username,
+        recentMessages,
       });
 
       await message.reply({
