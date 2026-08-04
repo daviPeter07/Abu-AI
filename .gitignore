@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+/src/generated/prisma
 
 # Logs
 logs
@@ -58,3 +59,8 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Generated artifacts from compiling the Prisma TypeScript config directly
+/prisma.config.js
+/prisma.config.js.map
+/prisma.config.d.ts
