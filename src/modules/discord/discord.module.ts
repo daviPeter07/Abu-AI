@@ -7,5 +7,6 @@ import { DiscordMemoryCommandsService } from './discord-memory-commands.service'
 @Module({
   imports: [ConversationsModule, MemoryModule],
   providers: [DiscordClientService, DiscordMemoryCommandsService],
+  exports: [DiscordClientService],
 })
 export class DiscordModule {}

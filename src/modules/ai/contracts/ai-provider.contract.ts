@@ -10,6 +10,7 @@ export interface AiMessage {
 export interface GenerateAiResponseInput {
   messages: AiMessage[];
   responseFormat?: 'text' | 'json';
+  correlationId?: string;
 }
 
 export interface AiProvider {

@@ -14,6 +14,7 @@ export interface GenerateConversationReplyInput {
   username: string;
   recentMessages: ConversationMessage[];
   relevantMemories?: string[];
+  correlationId?: string;
 }
 
 export type PersistedConversationMessageRole = 'USER' | 'ASSISTANT';

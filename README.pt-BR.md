@@ -24,6 +24,8 @@ O Abu AI é um bot conversacional para Discord que utiliza o OpenRouter para res
 - Permite visualizar, esquecer, limpar, desativar e ativar as próprias memórias.
 - Impede que eventos repetidos do Discord criem registros ou respostas duplicadas.
 - Conecta-se ao PostgreSQL durante a inicialização do NestJS e desconecta no encerramento.
+- Aplica timeout e tentativas limitadas apenas para falhas temporárias do OpenRouter.
+- Expõe endpoints seguros de saúde e métricas operacionais em memória.
 
 ## Tecnologias
 
@@ -56,7 +58,9 @@ src/
 │   ├── database/
 │   ├── discord/
 │   ├── discord-users/
-│   └── memory/
+│   ├── health/
+│   ├── memory/
+│   └── observability/
 ├── app.module.ts
 └── main.ts
 
@@ -74,6 +78,8 @@ prisma/
 | `discord` | Traduz eventos e mensagens do Discord para contratos da aplicação |
 | `discord-users` | Mantém perfis identificados pelo ID imutável do Discord |
 | `memory` | Valida e persiste memórias contextuais de usuário e grupo |
+| `observability` | Registra em memória métricas seguras de providers, conversas e tempos |
+| `health` | Informa o estado do PostgreSQL, Discord e providers de IA |
 
 O `DatabaseModule` não é global. Cada módulo que utiliza o banco deve importá-lo explicitamente.
 
@@ -148,6 +154,17 @@ Comandos de gestão:
 
 Usuários só podem visualizar ou alterar suas próprias memórias individuais. Alterações usam remoção lógica pelo status `REJECTED` e são registradas na tabela de auditoria.
 
+## Resiliência e Observabilidade
+
+As requisições de chat e embeddings ao OpenRouter usam timeout explícito e backoff exponencial limitado. Novas tentativas ocorrem apenas em falhas de conexão e respostas HTTP `408`, `429` e `5xx`. Erros permanentes de autenticação, créditos, modelo e outros não são repetidos e geram mensagens operacionais seguras, sem registrar API keys, prompts ou conteúdo das mensagens.
+
+Cada mensagem do Discord utiliza seu ID imutável como correlation ID. Logs estruturados e métricas em memória registram chamadas e falhas dos providers, tempo de recuperação do contexto, busca de memória, geração da resposta, processamento total, caracteres enviados e quantidade de memórias recuperadas.
+
+Endpoints operacionais:
+
+- `GET /health` verifica o PostgreSQL pelo Prisma, a prontidão do Discord e o último estado conhecido dos providers. Falhas temporárias dos providers são informadas como degradação; o endpoint retorna HTTP `503` para dependências centrais indisponíveis ou falhas permanentes dos providers.
+- `GET /metrics` retorna contadores e últimos tempos locais do processo. As métricas são reiniciadas junto com a aplicação.
+
 ## Variáveis de Ambiente
 
 Crie um arquivo `.env` baseado no `.env.example`:
@@ -161,6 +178,10 @@ DISCORD_AI_CHANNEL_ID=
 OPENROUTER_API_KEY=
 OPENROUTER_MODEL=
 EMBEDDING_MODEL=openai/text-embedding-3-small
+OPENROUTER_REQUEST_TIMEOUT_MS=30000
+OPENROUTER_RETRY_INITIAL_DELAY_MS=500
+OPENROUTER_RETRY_MAX_DELAY_MS=2000
+OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS=5000
 
 AI_CONTEXT_MAX_CHARACTERS=12000
 AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT=50
@@ -181,6 +202,10 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
 | `OPENROUTER_API_KEY` | Chave da API do OpenRouter |
 | `OPENROUTER_MODEL` | Identificador do modelo no OpenRouter |
 | `EMBEDDING_MODEL` | Identificador do modelo de embeddings no OpenRouter |
+| `OPENROUTER_REQUEST_TIMEOUT_MS` | Duração máxima de cada requisição ao OpenRouter em milissegundos |
+| `OPENROUTER_RETRY_INITIAL_DELAY_MS` | Intervalo inicial do backoff em milissegundos |
+| `OPENROUTER_RETRY_MAX_DELAY_MS` | Intervalo máximo do backoff em milissegundos |
+| `OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS` | Período total máximo para novas tentativas em milissegundos |
 | `AI_CONTEXT_MAX_CHARACTERS` | Limite de caracteres do contexto recente |
 | `AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT` | Quantidade máxima de mensagens recentes do banco consideradas antes do limite por caracteres |
 | `AI_MEMORY_MAX_CHARACTERS` | Limite de caracteres das memórias recuperadas |
@@ -257,4 +282,4 @@ Copie o ID do canal desejado para `DISCORD_AI_CHANNEL_ID`.
 
 ## Estado Atual
 
-A versão atual persiste conversas, extrai memórias contextuais, recupera memórias relevantes semanticamente, injeta-as com segurança no contexto da IA e oferece controle ao usuário sobre sua memória individual.
+A versão atual persiste conversas, gerencia memória contextual, aplica resiliência limitada ao OpenRouter e expõe saúde e métricas operacionais seguras.

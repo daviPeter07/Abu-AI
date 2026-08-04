@@ -5,6 +5,7 @@ import { DiscordModule } from './modules/discord/discord.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { MemoryModule } from './modules/memory/memory.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -25,6 +26,8 @@ import { MemoryModule } from './modules/memory/memory.module';
     ConversationsModule,
 
     MemoryModule,
+
+    HealthModule,
   ],
 })
 export class AppModule {}

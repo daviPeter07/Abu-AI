@@ -9,6 +9,7 @@ import {
 } from '../discord-users/repositories/discord-user.repository';
 import { MemoryService } from '../memory/memory.service';
 import { MemorySearchService } from '../memory/memory-search.service';
+import { ObservabilityService } from '../observability/observability.service';
 import type {
   ConversationMessage,
   GenerateConversationReplyInput,
@@ -53,6 +54,8 @@ describe('ConversationsService', () => {
   const getOrThrow = jest.fn().mockReturnValue(50);
   const extractFromMessage = jest.fn();
   const searchMemories = jest.fn();
+  const recordConversationSuccess = jest.fn();
+  const recordConversationFailure = jest.fn();
   const sendReply = jest.fn<
     Promise<PersistConversationMessageInput>,
     [string]
@@ -99,6 +102,8 @@ describe('ConversationsService', () => {
     getOrThrow.mockReset();
     extractFromMessage.mockReset();
     searchMemories.mockReset();
+    recordConversationSuccess.mockReset();
+    recordConversationFailure.mockReset();
     sendReply.mockReset();
 
     generateResponse.mockResolvedValue('Seu nome é Davi.');
@@ -165,6 +170,13 @@ describe('ConversationsService', () => {
             search: searchMemories,
           },
         },
+        {
+          provide: ObservabilityService,
+          useValue: {
+            recordConversationSuccess,
+            recordConversationFailure,
+          },
+        },
       ],
     }).compile();
 
@@ -225,11 +237,21 @@ describe('ConversationsService', () => {
       beforeDiscordCreatedAt: userMessage.discordCreatedAt,
       limit: 50,
     });
+    expect(searchMemories).toHaveBeenCalledWith({
+      query: userMessage.content,
+      discordUserId: userMessage.authorId,
+      guildId: userMessage.guildId,
+      correlationId: userMessage.discordMessageId,
+    });
     expect(buildMessages).toHaveBeenCalledWith({
       content: userMessage.content,
       username: userMessage.authorName,
       recentMessages,
       relevantMemories: [],
+    });
+    expect(generateResponse).toHaveBeenCalledWith({
+      messages: undefined,
+      correlationId: userMessage.discordMessageId,
     });
     expect(sendReply).toHaveBeenCalledWith('Seu nome é Davi.');
     expect(upsertDiscordUser).toHaveBeenNthCalledWith(2, {
@@ -256,6 +278,12 @@ describe('ConversationsService', () => {
       content: userMessage.content,
       discordCreatedAt: userMessage.discordCreatedAt,
     });
+    expect(recordConversationSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        charactersSent: assistantMessage.content.length,
+        memoriesRetrieved: 0,
+      }),
+    );
   });
 
   it('should ignore a duplicated Discord event', async () => {
@@ -267,6 +295,7 @@ describe('ConversationsService', () => {
     expect(findRecentByChannel).not.toHaveBeenCalled();
     expect(generateResponse).not.toHaveBeenCalled();
     expect(sendReply).not.toHaveBeenCalled();
+    expect(recordConversationFailure).not.toHaveBeenCalled();
   });
 
   it('should stop when updating the user profile fails', async () => {
@@ -281,6 +310,7 @@ describe('ConversationsService', () => {
     expect(findRecentByChannel).not.toHaveBeenCalled();
     expect(sendReply).not.toHaveBeenCalled();
     expect(loggerError).toHaveBeenCalled();
+    expect(recordConversationFailure).toHaveBeenCalledTimes(1);
   });
 
   it('should wait for a successful retry when persisting the user message fails', async () => {

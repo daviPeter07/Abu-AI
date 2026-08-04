@@ -11,7 +11,7 @@ export class EmbeddingService {
     private readonly embeddingProvider: EmbeddingProvider,
   ) {}
 
-  generate(text: string): Promise<number[]> {
-    return this.embeddingProvider.generate(text);
+  generate(text: string, correlationId?: string): Promise<number[]> {
+    return this.embeddingProvider.generate(text, correlationId);
   }
 }

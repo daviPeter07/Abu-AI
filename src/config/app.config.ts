@@ -13,6 +13,16 @@ export const appConfig = registerAs('app', () => ({
     apiKey: process.env.OPENROUTER_API_KEY,
     model: process.env.OPENROUTER_MODEL,
     embeddingModel: process.env.EMBEDDING_MODEL,
+    requestTimeoutMs: Number(
+      process.env.OPENROUTER_REQUEST_TIMEOUT_MS ?? 30_000,
+    ),
+    retryInitialDelayMs: Number(
+      process.env.OPENROUTER_RETRY_INITIAL_DELAY_MS ?? 500,
+    ),
+    retryMaxDelayMs: Number(process.env.OPENROUTER_RETRY_MAX_DELAY_MS ?? 2_000),
+    retryMaxElapsedTimeMs: Number(
+      process.env.OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS ?? 5_000,
+    ),
   },
 
   ai: {
@@ -48,6 +58,26 @@ export const envValidationSchema = Joi.object({
   OPENROUTER_MODEL: Joi.string().trim().required(),
 
   EMBEDDING_MODEL: Joi.string().trim().required(),
+
+  OPENROUTER_REQUEST_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(1_000)
+    .default(30_000),
+
+  OPENROUTER_RETRY_INITIAL_DELAY_MS: Joi.number()
+    .integer()
+    .min(100)
+    .default(500),
+
+  OPENROUTER_RETRY_MAX_DELAY_MS: Joi.number()
+    .integer()
+    .min(Joi.ref('OPENROUTER_RETRY_INITIAL_DELAY_MS'))
+    .default(2_000),
+
+  OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS: Joi.number()
+    .integer()
+    .min(Joi.ref('OPENROUTER_RETRY_MAX_DELAY_MS'))
+    .default(5_000),
 
   AI_CONTEXT_MAX_CHARACTERS: Joi.number().integer().min(2_000).default(12_000),
 
