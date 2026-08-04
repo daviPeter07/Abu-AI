@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: abu_ai_
+      POSTGRES_DB: abu_ai
     ports:
       - "5433:5432"
     volumes:
@@ -15,7 +15,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U postgres -d abuai",
+          "pg_isready -U postgres -d abu_ai",
         ]
       interval: 5s
       timeout: 5s

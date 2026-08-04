@@ -2,178 +2,106 @@
 
 # Abu AI
 
-Abu AI is a conversational Discord bot that interacts with users inside a dedicated server channel.
+Abu AI is a conversational Discord bot that uses OpenRouter to answer messages in a dedicated server channel. It preserves recent Discord context and persists user and assistant messages in PostgreSQL.
 
-Built with NestJS, TypeScript, and discord.js, Abu AI connects to the Discord Gateway, listens for messages in a configured channel, and responds directly to the conversation.
-
-The project will gradually evolve to use language models, conversation context, and memories extracted from the interactions of a group of friends.
-
-> Abu AI is currently under development.
-
-## Overview
-
-Abu AI provides a dedicated space where users can communicate naturally with an artificial intelligence without using commands or mentioning the bot.
-
-When a user sends a message in the configured Discord channel, the application receives the event through the Discord Gateway, processes the message, and sends a response in the same conversation.
-
-The current version implements the Discord connection and message flow. The next stage will integrate OpenRouter to replace the fixed response with an AI-generated response.
-
-## Goals
-
-Abu AI is being developed as both a conversational application and a study project focused on:
-
-* NestJS modular architecture
-* Discord Gateway integration
-* Event-driven communication
-* External AI providers
-* Conversation context
-* Contextual memory
-* Retrieval-augmented generation
-* Background processing
-* PostgreSQL and vector search
+> Abu AI is under active development.
 
 ## Features
 
-### Discord integration
-
-* Connect to Discord through the Gateway
-* Listen for new messages
-* Respond inside a dedicated channel
-* Ignore messages from other bots
-* Ignore direct messages
-* Display the typing indicator before responding
-* Close the Discord connection when the application stops
-
-### Configuration
-
-* Load environment variables through NestJS Config
-* Validate required variables during startup
-* Configure the bot token and channel through the environment
-* Prevent the application from starting with incomplete configuration
-
-### Planned AI integration
-
-* Generate responses through OpenRouter
-* Define the bot personality through a system prompt
-* Send recent messages as conversation context
-* Persist conversations in PostgreSQL
-* Retrieve relevant previous conversations
-* Build contextual memory about the group
+- Connects to the Discord Gateway and listens to one configured channel.
+- Ignores bots, direct messages, empty messages, and messages from other channels.
+- Uses a typing indicator and replies directly to the original message.
+- Generates responses through OpenRouter with Abu's system prompt.
+- Identifies users by their Discord display names in the AI context.
+- Loads recent Discord messages and limits the context window by characters.
+- Persists user messages and the replies effectively sent by the bot.
+- Prevents duplicate Discord events from creating duplicate records or replies.
+- Connects to PostgreSQL during NestJS startup and disconnects during shutdown.
 
 ## Tech Stack
 
-* [Node.js](https://nodejs.org/)
-* [TypeScript](https://www.typescriptlang.org/)
-* [NestJS](https://nestjs.com/)
-* [discord.js](https://discord.js.org/)
-* [OpenRouter](https://openrouter.ai/)
-* [Joi](https://joi.dev/)
-* [pnpm](https://pnpm.io/)
+- [Node.js](https://nodejs.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [NestJS](https://nestjs.com/)
+- [discord.js](https://discord.js.org/)
+- [OpenRouter](https://openrouter.ai/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [Prisma ORM](https://www.prisma.io/)
+- [Joi](https://joi.dev/)
+- [Jest](https://jestjs.io/)
+- [Docker Compose](https://docs.docker.com/compose/)
+- [pnpm](https://pnpm.io/)
 
 ## Architecture
 
-Abu AI is organized as a modular monolith.
-
-Each integration and application responsibility is kept inside its own module. This allows the project to evolve without introducing separate services before they are necessary.
+The application is a modular monolith. Business and application rules do not depend directly on `discord.js` or Prisma.
 
 ```text
-abu-ai/
-├── src/
-│   ├── config/
-│   │   └── app.config.ts
-│   │
-│   ├── modules/
-│   │   └── discord/
-│   │       ├── discord.module.ts
-│   │       └── discord-client.service.ts
-│   │
-│   ├── app.module.ts
-│   └── main.ts
-│
-├── test/
-├── .env.example
-├── nest-cli.json
-├── package.json
-├── pnpm-lock.yaml
-├── tsconfig.build.json
-├── tsconfig.json
-└── README.md
-```
+src/
+├── config/
+│   └── app.config.ts
+├── generated/
+│   └── prisma/
+├── modules/
+│   ├── ai/
+│   ├── conversations/
+│   │   └── repositories/
+│   ├── database/
+│   └── discord/
+├── app.module.ts
+└── main.ts
 
-### Current modules
+prisma/
+├── migrations/
+└── schema.prisma
+```
 
 | Module | Responsibility |
 | --- | --- |
-| `config` | Load and validate application configuration |
-| `discord` | Connect to Discord, receive messages, and send responses |
-| `app` | Compose the application modules |
-| `main` | Start the NestJS application |
+| `config` | Loads and validates application configuration |
+| `database` | Owns the Prisma Client and PostgreSQL lifecycle |
+| `ai` | Defines the AI provider contract and OpenRouter implementation |
+| `conversations` | Orchestrates persistence, context window, and response generation |
+| `discord` | Translates Discord events and messages to application contracts |
 
-The project is expected to gain additional modules as its AI and memory features are implemented:
+`DatabaseModule` is not global. Modules that need database access must import it explicitly.
 
-```text
-modules/
-├── discord/
-├── ai/
-├── conversations/
-└── knowledge/
-```
-
-## Message flow
-
-The current message flow is:
+## Message Flow
 
 ```text
-Discord user
-     ↓
-Configured channel
-     ↓
-Discord Gateway
-     ↓
+Discord message
+      ↓
 DiscordClientService
-     ↓
-Message validation
-     ↓
-Bot response
+      ↓
+ConversationsService
+      ↓
+Persist user message
+      ↓
+Load recent Discord context
+      ↓
+ConversationContextWindowService
+      ↓
+AiService → OpenRouterProvider
+      ↓
+Send Discord reply
+      ↓
+Persist the sent assistant message
 ```
 
-After the OpenRouter integration, the flow will become:
+The repository uses the unique `discordMessageId` and PostgreSQL `skipDuplicates` support. A repeated event is ignored before generating another response.
 
-```text
-Discord user
-     ↓
-DiscordClientService
-     ↓
-ConversationService
-     ↓
-AIService
-     ↓
-OpenRouter
-     ↓
-Discord response
-```
+Persistence failures are handled explicitly:
 
-## Discord configuration
+- If the user message cannot be saved, the error is logged and processing stops before generating a reply. A later redelivery can safely retry.
+- If AI generation fails, the user message remains saved and Discord receives the existing friendly operational error response.
+- If sending the reply fails, no conversational assistant message is persisted.
+- If the sent reply cannot be saved, the error is logged and the delivered Discord response is preserved.
 
-Create an application in the Discord Developer Portal and add a bot to it.
+Operational error responses are intentionally not persisted as conversation history.
 
-Enable the following privileged Gateway Intent:
+External Discord and OpenRouter calls are not wrapped in a database transaction.
 
-```text
-Message Content Intent
-```
-
-Install the bot in the Discord server with the following permissions:
-
-```text
-View Channels
-Send Messages
-Read Message History
-```
-
-Enable Developer Mode in Discord and copy the ID of the channel where the bot should respond.
-
-## Environment variables
+## Environment Variables
 
 Create a `.env` file based on `.env.example`:
 
@@ -182,70 +110,92 @@ PORT=3000
 
 DISCORD_BOT_TOKEN=
 DISCORD_AI_CHANNEL_ID=
+
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=
+
+AI_CONTEXT_MAX_CHARACTERS=12000
+
+DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
 ```
 
 | Variable | Description |
 | --- | --- |
 | `PORT` | Port used by the NestJS application |
-| `DISCORD_BOT_TOKEN` | Token used to authenticate the Discord bot |
-| `DISCORD_AI_CHANNEL_ID` | Channel where the bot receives and responds to messages |
+| `DISCORD_BOT_TOKEN` | Discord bot authentication token |
+| `DISCORD_AI_CHANNEL_ID` | Channel where Abu receives and answers messages |
+| `OPENROUTER_API_KEY` | OpenRouter API key |
+| `OPENROUTER_MODEL` | OpenRouter model identifier |
+| `AI_CONTEXT_MAX_CHARACTERS` | Maximum character budget for recent context |
+| `DATABASE_URL` | PostgreSQL connection string used by NestJS and Prisma |
 
-## Installation
+## Local Setup
 
-Clone the repository:
+Requirements:
 
-```bash
-git clone https://github.com/daviPeter07/abu-ai.git
-```
+- Node.js compatible with Prisma 7
+- pnpm 10 or newer
+- Docker with Docker Compose
 
-Enter the project directory:
-
-```bash
-cd abu-ai
-```
-
-Install the dependencies:
+Install dependencies and generate Prisma Client:
 
 ```bash
 pnpm install
 ```
 
-Create the `.env` file and configure the required variables.
+Start PostgreSQL:
 
-## Running the application
+```bash
+docker compose up -d
+```
 
-Start the application in development mode:
+Apply development migrations:
+
+```bash
+pnpm prisma:migrate
+```
+
+Start the application:
 
 ```bash
 pnpm start:dev
 ```
 
-Build the project:
+The PostgreSQL container listens on host port `5433` to avoid conflicts with local installations using port `5432`.
+
+If PostgreSQL was initialized from an older Compose file with a different database name, back up any required data and recreate the development volume before applying migrations:
 
 ```bash
-pnpm build
+docker compose down -v
+docker compose up -d
+pnpm prisma:migrate
 ```
 
-Run the compiled application:
+## Commands
 
 ```bash
+pnpm prisma:generate
+pnpm prisma:migrate
+pnpm format
+pnpm lint
+pnpm test
+pnpm build
+pnpm start:dev
 pnpm start:prod
 ```
 
-When the application starts successfully, the bot will appear online in Discord.
+## Discord Configuration
 
-Send a message in the channel configured through `DISCORD_AI_CHANNEL_ID` and the bot will respond in the same conversation.
+Create a bot in the Discord Developer Portal and enable `Message Content Intent`.
 
-## Current status
+Grant these channel permissions:
 
-The first development stage is complete.
+- View Channels
+- Send Messages
+- Read Message History
 
-Abu AI can currently:
+Copy the target channel ID to `DISCORD_AI_CHANNEL_ID`.
 
-* Connect to Discord
-* Receive messages from a configured channel
-* Validate the message source
-* Display the typing indicator
-* Send a fixed response
+## Current Status
 
-The next stage will introduce the OpenRouter integration and AI-generated responses.
+The current version includes the database foundation and conversation-message persistence. Recent context is still loaded from Discord; replacing Discord history with PostgreSQL is the next planned increment.

@@ -4,7 +4,6 @@ import { appConfig, envValidationSchema } from './config/app.config';
 import { DiscordModule } from './modules/discord/discord.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
-import { DatabaseModule } from './modules/database/database.module';
 
 @Module({
   imports: [
@@ -17,8 +16,6 @@ import { DatabaseModule } from './modules/database/database.module';
         allowUnknown: true,
       },
     }),
-
-    DatabaseModule,
 
     DiscordModule,
 
