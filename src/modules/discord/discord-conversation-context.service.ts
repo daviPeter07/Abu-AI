@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { Message } from 'discord.js';
-import { ConversationMessage } from '../conversations/conversation-message.contract';
+import type { ConversationMessage } from '../conversations/conversation-message.contract';
 
 @Injectable()
 export class DiscordConversationContextService {
-  private static readonly RECENT_MESSAGES_LIMIT = 10;
+  private static readonly CONTEXT_CANDIDATE_MESSAGES_LIMIT = 50;
 
   async getRecentMessages(
     message: Message<true>,
@@ -12,7 +12,7 @@ export class DiscordConversationContextService {
   ): Promise<ConversationMessage[]> {
     const messages = await message.channel.messages.fetch({
       before: message.id,
-      limit: DiscordConversationContextService.RECENT_MESSAGES_LIMIT,
+      limit: DiscordConversationContextService.CONTEXT_CANDIDATE_MESSAGES_LIMIT,
       cache: false,
     });
 

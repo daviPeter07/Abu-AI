@@ -13,6 +13,12 @@ export const appConfig = registerAs('app', () => ({
     apiKey: process.env.OPENROUTER_API_KEY,
     model: process.env.OPENROUTER_MODEL,
   },
+
+  ai: {
+    contextMaxCharacters: Number(
+      process.env.AI_CONTEXT_MAX_CHARACTERS ?? 12_000,
+    ),
+  },
 }));
 
 export const envValidationSchema = Joi.object({
@@ -24,4 +30,6 @@ export const envValidationSchema = Joi.object({
 
   OPENROUTER_API_KEY: Joi.string().trim().required(),
   OPENROUTER_MODEL: Joi.string().trim().required(),
+
+  AI_CONTEXT_MAX_CHARACTERS: Joi.number().integer().min(2_000).default(12_000),
 });
