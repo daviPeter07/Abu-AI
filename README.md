@@ -170,6 +170,12 @@ Operational endpoints:
 Create a `.env` file based on `.env.example`:
 
 ```env
+COMPOSE_PROJECT_NAME=abu-ai
+RESTART_POLICY=unless-stopped
+
+API_CONTAINER_NAME=abu_ai_api
+API_IMAGE=abu-ai:local
+API_HOST_PORT=3000
 PORT=3000
 
 DISCORD_BOT_TOKEN=
@@ -194,6 +200,11 @@ MEMORY_SEARCH_LIMIT=10
 POSTGRES_USER=abu_ai
 POSTGRES_PASSWORD=
 POSTGRES_DB=abu_ai
+POSTGRES_CONTAINER_NAME=abu_ai_postgres
+POSTGRES_IMAGE=postgres:17.9-alpine3.23@sha256:c7526c0f6c3f30260a563d7bcf8ad778effac59a44f8ffa86678c35418338609
+POSTGRES_HOST_PORT=5433
+POSTGRES_CONTAINER_PORT=5432
+POSTGRES_VOLUME_NAME=abu_ai_postgres_data
 
 DATABASE_URL=
 DOCKER_DATABASE_URL=
@@ -201,6 +212,11 @@ DOCKER_DATABASE_URL=
 
 | Variable | Description |
 | --- | --- |
+| `COMPOSE_PROJECT_NAME` | Docker Compose project name |
+| `RESTART_POLICY` | Restart policy shared by the API and PostgreSQL services |
+| `API_CONTAINER_NAME` | API container name |
+| `API_IMAGE` | Local API image name and tag |
+| `API_HOST_PORT` | API port published on the host |
 | `PORT` | Port used by the NestJS application |
 | `DISCORD_BOT_TOKEN` | Discord bot authentication token |
 | `DISCORD_AI_CHANNEL_ID` | Channel where Abu receives and answers messages |
@@ -220,6 +236,11 @@ DOCKER_DATABASE_URL=
 | `POSTGRES_USER` | PostgreSQL user created by the Compose service |
 | `POSTGRES_PASSWORD` | Required PostgreSQL password; never commit its value |
 | `POSTGRES_DB` | PostgreSQL database created by the Compose service |
+| `POSTGRES_CONTAINER_NAME` | PostgreSQL container name |
+| `POSTGRES_IMAGE` | PostgreSQL image and pinned digest |
+| `POSTGRES_HOST_PORT` | PostgreSQL port published on the host |
+| `POSTGRES_CONTAINER_PORT` | PostgreSQL port inside the Compose network |
+| `POSTGRES_VOLUME_NAME` | Name of the persistent PostgreSQL volume |
 | `DATABASE_URL` | PostgreSQL connection string for commands running on the host through `localhost:5433` |
 | `DOCKER_DATABASE_URL` | PostgreSQL connection string used by the API container through `postgres:5432` |
 
@@ -269,7 +290,7 @@ pnpm prisma:migrate
 
 The production image uses a multi-stage build, installs only runtime dependencies, and runs as the non-root `node` user. The API container waits for PostgreSQL to become healthy, applies pending migrations with `prisma migrate deploy`, and then starts the compiled NestJS application.
 
-Create `.env` from `.env.example` with valid Discord, OpenRouter, and PostgreSQL credentials. Set `DATABASE_URL` for commands executed on the host and the required `DOCKER_DATABASE_URL` with the internal `postgres:5432` hostname for the API container. Secrets are required at runtime and are not copied into the image. API port `3000` and PostgreSQL port `5433` are bound only to the host loopback interface; expose the API through a secured reverse proxy when remote access is required.
+Create `.env` from `.env.example` with valid Discord, OpenRouter, and PostgreSQL credentials. Set `DATABASE_URL` for commands executed on the host and `DOCKER_DATABASE_URL` with the internal `postgres` hostname for the API container. Compose reads container names, images, ports, restart policy, volume name, and credentials from this file. Secrets are required at runtime and are not copied into the image.
 
 Build and start the API with PostgreSQL:
 
