@@ -1,21 +1,40 @@
 services:
+  api:
+    container_name: abu_ai_api
+    build:
+      context: .
+      target: runtime
+    image: abu-ai:local
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DOCKER_DATABASE_URL:?DOCKER_DATABASE_URL is required}
+      PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     container_name: abu_ai_postgres
-    image: postgres:17-alpine
+    image: postgres:17.9-alpine3.23@sha256:c7526c0f6c3f30260a563d7bcf8ad778effac59a44f8ffa86678c35418338609
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: abu_ai
+      POSTGRES_USER: ${POSTGRES_USER:-abu_ai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-abu_ai}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - abu_ai_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U postgres -d abu_ai",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
         ]
       interval: 5s
       timeout: 5s

@@ -191,7 +191,12 @@ AI_MEMORY_MAX_ITEMS=10
 MEMORY_SIMILARITY_THRESHOLD=0.7
 MEMORY_SEARCH_LIMIT=10
 
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
+POSTGRES_USER=abu_ai
+POSTGRES_PASSWORD=
+POSTGRES_DB=abu_ai
+
+DATABASE_URL=
+DOCKER_DATABASE_URL=
 ```
 
 | Variable | Description |
@@ -212,7 +217,11 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5433/abu_ai?schema=public
 | `AI_MEMORY_MAX_ITEMS` | Maximum retrieved memories added to the AI context |
 | `MEMORY_SIMILARITY_THRESHOLD` | Minimum cosine similarity accepted during retrieval |
 | `MEMORY_SEARCH_LIMIT` | Maximum semantic search results |
-| `DATABASE_URL` | PostgreSQL connection string used by NestJS and Prisma |
+| `POSTGRES_USER` | PostgreSQL user created by the Compose service |
+| `POSTGRES_PASSWORD` | Required PostgreSQL password; never commit its value |
+| `POSTGRES_DB` | PostgreSQL database created by the Compose service |
+| `DATABASE_URL` | PostgreSQL connection string for commands running on the host through `localhost:5433` |
+| `DOCKER_DATABASE_URL` | PostgreSQL connection string used by the API container through `postgres:5432` |
 
 ## Local Setup
 
@@ -231,7 +240,7 @@ pnpm install
 Start PostgreSQL:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
 Apply development migrations:
@@ -252,21 +261,58 @@ If PostgreSQL was initialized from an older Compose file with a different databa
 
 ```bash
 docker compose down -v
-docker compose up -d
+docker compose up -d postgres
 pnpm prisma:migrate
 ```
+
+## Docker Deployment
+
+The production image uses a multi-stage build, installs only runtime dependencies, and runs as the non-root `node` user. The API container waits for PostgreSQL to become healthy, applies pending migrations with `prisma migrate deploy`, and then starts the compiled NestJS application.
+
+Create `.env` from `.env.example` with valid Discord, OpenRouter, and PostgreSQL credentials. Set `DATABASE_URL` for commands executed on the host and the required `DOCKER_DATABASE_URL` with the internal `postgres:5432` hostname for the API container. Secrets are required at runtime and are not copied into the image. API port `3000` and PostgreSQL port `5433` are bound only to the host loopback interface; expose the API through a secured reverse proxy when remote access is required.
+
+Build and start the API with PostgreSQL:
+
+```bash
+docker compose up --build -d
+docker compose ps
+```
+
+Inspect API logs:
+
+```bash
+docker compose logs -f api
+```
+
+Check health and metrics from another terminal:
+
+```bash
+curl http://localhost:3000/health
+curl http://localhost:3000/metrics
+```
+
+Stop the containers without deleting PostgreSQL data:
+
+```bash
+docker compose down
+```
+
+The image healthcheck calls `GET /health`. Do not use `prisma migrate dev` in production; the container startup command uses `prisma migrate deploy` automatically.
 
 ## Commands
 
 ```bash
 pnpm prisma:generate
 pnpm prisma:migrate
+pnpm prisma:deploy
 pnpm format
 pnpm lint
 pnpm test
 pnpm build
 pnpm start:dev
 pnpm start:prod
+docker compose up --build -d
+docker compose ps
 ```
 
 ## Discord Configuration
@@ -282,4 +328,4 @@ Copy the target channel ID to `DISCORD_AI_CHANNEL_ID`.
 
 ## Current Status
 
-The current version persists conversations, manages contextual memory, applies bounded OpenRouter resilience, and exposes safe health and operational metrics.
+The current version persists conversations, manages contextual memory, applies bounded OpenRouter resilience, exposes safe operational endpoints, and runs through a production-oriented Docker image.
