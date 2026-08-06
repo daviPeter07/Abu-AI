@@ -50,3 +50,6 @@ jobs:
 
       - name: Build application
         run: pnpm build
+
+      - name: Build production image
+        run: docker build --target runtime --tag abu-ai:ci .
