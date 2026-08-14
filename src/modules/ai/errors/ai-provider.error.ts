@@ -7,6 +7,21 @@ export type AiProviderErrorCode =
   | 'PROVIDER_UNAVAILABLE'
   | 'UNKNOWN';
 
+const TIMEOUT_STATUS_CODES = new Set([408, 504, 524]);
+const TIMEOUT_ERROR_NAMES = new Set([
+  'RequestTimeoutError',
+  'RequestAbortedError',
+  'TimeoutError',
+  'AbortError',
+]);
+const TIMEOUT_ERROR_CODES = new Set([
+  'ETIMEDOUT',
+  'ECONNABORTED',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_SOCKET',
+]);
+
 export class AiProviderError extends Error {
   readonly name = 'AiProviderError';
 
@@ -22,7 +37,6 @@ export class AiProviderError extends Error {
 
 export function classifyOpenRouterError(error: unknown): AiProviderError {
   const statusCode = getStatusCode(error);
-  const errorName = error instanceof Error ? error.name : '';
 
   if (statusCode === 401) {
     return new AiProviderError(
@@ -60,11 +74,16 @@ export function classifyOpenRouterError(error: unknown): AiProviderError {
     );
   }
 
-  if (
-    statusCode === 408 ||
-    statusCode === 524 ||
-    errorName === 'RequestTimeoutError'
-  ) {
+  if (statusCode !== undefined && TIMEOUT_STATUS_CODES.has(statusCode)) {
+    return new AiProviderError(
+      'TIMEOUT',
+      'O provedor de IA demorou demais para responder. Tente novamente.',
+      statusCode,
+      error,
+    );
+  }
+
+  if (isTimeoutLikeError(error)) {
     return new AiProviderError(
       'TIMEOUT',
       'O provedor de IA demorou demais para responder. Tente novamente.',
@@ -98,4 +117,46 @@ function getStatusCode(error: unknown): number | undefined {
   const { statusCode } = error;
 
   return typeof statusCode === 'number' ? statusCode : undefined;
+}
+
+function isTimeoutLikeError(error: unknown): boolean {
+  let current: unknown = error;
+  const visited = new Set<unknown>();
+
+  while (
+    typeof current === 'object' &&
+    current !== null &&
+    !visited.has(current)
+  ) {
+    visited.add(current);
+
+    const name = getStringProperty(current, 'name');
+    const code = getStringProperty(current, 'code');
+
+    if (name !== undefined && TIMEOUT_ERROR_NAMES.has(name)) {
+      return true;
+    }
+
+    if (code !== undefined && TIMEOUT_ERROR_CODES.has(code)) {
+      return true;
+    }
+
+    current = getProperty(current, 'cause');
+  }
+
+  return false;
+}
+
+function getStringProperty(value: object, key: string): string | undefined {
+  if (!(key in value)) {
+    return undefined;
+  }
+
+  const propertyValue = (value as Record<string, unknown>)[key];
+
+  return typeof propertyValue === 'string' ? propertyValue : undefined;
+}
+
+function getProperty(value: object, key: string): unknown {
+  return (value as Record<string, unknown>)[key];
 }

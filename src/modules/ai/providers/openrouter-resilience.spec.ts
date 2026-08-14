@@ -11,7 +11,7 @@ describe('getOpenRouterResilienceConfig', () => {
       'app.openRouter.requestTimeoutMs': 30_000,
       'app.openRouter.retryInitialDelayMs': 500,
       'app.openRouter.retryMaxDelayMs': 2_000,
-      'app.openRouter.retryMaxElapsedTimeMs': 5_000,
+      'app.openRouter.retryMaxElapsedTimeMs': 60_000,
     };
     const configService = {
       getOrThrow: jest.fn((key: string) => values[key]),
@@ -25,7 +25,7 @@ describe('getOpenRouterResilienceConfig', () => {
           initialInterval: 500,
           maxInterval: 2_000,
           exponent: 2,
-          maxElapsedTime: 5_000,
+          maxElapsedTime: 60_000,
         },
         retryConnectionErrors: true,
       },

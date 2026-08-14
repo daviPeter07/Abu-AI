@@ -156,7 +156,7 @@ Usuários só podem visualizar ou alterar suas próprias memórias individuais. 
 
 ## Resiliência e Observabilidade
 
-As requisições de chat e embeddings ao OpenRouter usam timeout explícito e backoff exponencial limitado. Novas tentativas ocorrem apenas em falhas de conexão e respostas HTTP `408`, `429` e `5xx`. Erros permanentes de autenticação, créditos, modelo e outros não são repetidos e geram mensagens operacionais seguras, sem registrar API keys, prompts ou conteúdo das mensagens.
+As requisições de chat e embeddings ao OpenRouter usam timeout explícito e backoff exponencial limitado. Novas tentativas ocorrem apenas em falhas de conexão e respostas HTTP `408`, `429` e `5xx`. A janela de novas tentativas é maior que o timeout de uma requisição, então respostas lentas ou que estouram o timeout recebem pelo menos uma nova tentativa antes de falhar. Erros permanentes de autenticação, créditos, modelo e outros não são repetidos e geram mensagens operacionais seguras, sem registrar API keys, prompts ou conteúdo das mensagens.
 
 Cada mensagem do Discord utiliza seu ID imutável como correlation ID. Logs estruturados e métricas em memória registram chamadas e falhas dos providers, tempo de recuperação do contexto, busca de memória, geração da resposta, processamento total, caracteres enviados e quantidade de memórias recuperadas.
 
@@ -187,7 +187,7 @@ EMBEDDING_MODEL=openai/text-embedding-3-small
 OPENROUTER_REQUEST_TIMEOUT_MS=30000
 OPENROUTER_RETRY_INITIAL_DELAY_MS=500
 OPENROUTER_RETRY_MAX_DELAY_MS=2000
-OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS=5000
+OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS=60000
 
 AI_CONTEXT_MAX_CHARACTERS=12000
 AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT=50

@@ -9,6 +9,8 @@ describe('classifyOpenRouterError', () => {
     [429, 'RATE_LIMITED'],
     [500, 'PROVIDER_UNAVAILABLE'],
     [503, 'PROVIDER_UNAVAILABLE'],
+    [504, 'TIMEOUT'],
+    [524, 'TIMEOUT'],
   ] as const)('should classify HTTP status %s as %s', (statusCode, code) => {
     const result = classifyOpenRouterError({ statusCode });
 
@@ -17,11 +19,45 @@ describe('classifyOpenRouterError', () => {
     expect(result.statusCode).toBe(statusCode);
   });
 
-  it('should classify SDK timeouts without an HTTP status', () => {
-    const error = new Error('Request timed out');
-    error.name = 'RequestTimeoutError';
+  it.each([
+    ['RequestTimeoutError'],
+    ['RequestAbortedError'],
+    ['TimeoutError'],
+    ['AbortError'],
+  ])('should classify %s as TIMEOUT', (name) => {
+    const error = new Error('Request failed');
+    error.name = name;
 
     expect(classifyOpenRouterError(error).code).toBe('TIMEOUT');
+  });
+
+  it.each([['ETIMEDOUT'], ['ECONNABORTED'], ['UND_ERR_CONNECT_TIMEOUT']])(
+    'should classify %s as TIMEOUT',
+    (code) => {
+      const error = Object.assign(new Error('Request failed'), { code });
+
+      expect(classifyOpenRouterError(error).code).toBe('TIMEOUT');
+    },
+  );
+
+  it('should classify a timeout wrapped in a cause chain as TIMEOUT', () => {
+    const timeoutCause = Object.assign(new Error('aborted'), {
+      name: 'TimeoutError',
+    });
+    const wrapper = new Error('Unexpected HTTP client error', {
+      cause: timeoutCause,
+    });
+    wrapper.name = 'UnexpectedClientError';
+
+    expect(classifyOpenRouterError(wrapper).code).toBe('TIMEOUT');
+  });
+
+  it('should not treat connection resets as timeouts', () => {
+    const error = Object.assign(new Error('connect ECONNREFUSED'), {
+      code: 'ECONNREFUSED',
+    });
+
+    expect(classifyOpenRouterError(error).code).toBe('PROVIDER_UNAVAILABLE');
   });
 
   it('should not expose the original provider message', () => {

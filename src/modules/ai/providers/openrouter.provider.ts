@@ -84,6 +84,10 @@ export class OpenRouterProvider implements AiProvider {
         },
       );
 
+      if (isSdkErrorEnvelope(completion)) {
+        throw completion.error;
+      }
+
       if (!('choices' in completion)) {
         throw new Error(
           'O OpenRouter retornou uma resposta em formato de stream',
@@ -131,4 +135,23 @@ export class OpenRouterProvider implements AiProvider {
   private elapsedMilliseconds(startedAt: number): number {
     return Math.round(performance.now() - startedAt);
   }
+}
+
+interface OpenRouterSdkErrorEnvelope {
+  ok: false;
+  error: unknown;
+}
+
+function isSdkErrorEnvelope(
+  value: unknown,
+): value is OpenRouterSdkErrorEnvelope {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  if (!('ok' in value) || (value as { ok?: unknown }).ok !== false) {
+    return false;
+  }
+
+  return 'error' in value;
 }

@@ -21,7 +21,7 @@ export const appConfig = registerAs('app', () => ({
     ),
     retryMaxDelayMs: Number(process.env.OPENROUTER_RETRY_MAX_DELAY_MS ?? 2_000),
     retryMaxElapsedTimeMs: Number(
-      process.env.OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS ?? 5_000,
+      process.env.OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS ?? 60_000,
     ),
   },
 
@@ -77,7 +77,7 @@ export const envValidationSchema = Joi.object({
   OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS: Joi.number()
     .integer()
     .min(Joi.ref('OPENROUTER_RETRY_MAX_DELAY_MS'))
-    .default(5_000),
+    .default(60_000),
 
   AI_CONTEXT_MAX_CHARACTERS: Joi.number().integer().min(2_000).default(12_000),
 

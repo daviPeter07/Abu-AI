@@ -156,7 +156,7 @@ Users can only view or change their own individual memories. Changes are soft de
 
 ## Resilience and Observability
 
-OpenRouter chat and embedding requests use an explicit timeout and bounded exponential backoff. Retries are limited to connection failures, HTTP `408`, `429`, and `5xx` responses. Authentication, credit, model, and other permanent errors are not retried and produce safe operational messages without logging API keys, prompts, or message content.
+OpenRouter chat and embedding requests use an explicit timeout and bounded exponential backoff. Retries are limited to connection failures, HTTP `408`, `429`, and `5xx` responses. The retry window is longer than a single request timeout, so slow or timed-out responses get at least one retry before failing. Authentication, credit, model, and other permanent errors are not retried and produce safe operational messages without logging API keys, prompts, or message content.
 
 Every Discord message uses its immutable message ID as a correlation ID. Structured logs and in-memory metrics record provider calls, failures, context retrieval time, memory search time, response generation time, total processing time, sent characters, and retrieved memory count.
 
@@ -187,7 +187,7 @@ EMBEDDING_MODEL=openai/text-embedding-3-small
 OPENROUTER_REQUEST_TIMEOUT_MS=30000
 OPENROUTER_RETRY_INITIAL_DELAY_MS=500
 OPENROUTER_RETRY_MAX_DELAY_MS=2000
-OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS=5000
+OPENROUTER_RETRY_MAX_ELAPSED_TIME_MS=60000
 
 AI_CONTEXT_MAX_CHARACTERS=12000
 AI_CONTEXT_CANDIDATE_MESSAGES_LIMIT=50
